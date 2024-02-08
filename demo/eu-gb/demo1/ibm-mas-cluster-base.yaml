@@ -1,0 +1,15 @@
+merge-key: "demo/eu-gb/demo1"
+
+account:
+  id: demo
+
+region:
+  id: eu-gb
+
+cluster:
+  id: demo1
+  url: https://kubernetes.default.svc
+
+sm:
+  aws_access_key_id: "<path:arn:aws:secretsmanager:us-east-2:435377327995:secret:demo/demo1/aws#aws_access_key_id>"
+  aws_secret_access_key: "<path:arn:aws:secretsmanager:us-east-2:435377327995:secret:demo/demo1/aws#aws_secret_access_key>"
