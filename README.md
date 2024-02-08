@@ -14,7 +14,7 @@ The **Cluster Root Application Set**  generates a **[Cluster Root Application](h
 The **Cluster Root Application Set** also contains the **MAS Instance Application Set**
 - [MAS Instance](https://github.com/ibm-mas/gitops/blob/demo1/root-applications/ibm-mas-cluster-root/templates/instance-appset.yaml)
 
-The **MAS Instance Application Set** contains .... <WORK IN PROGRESS> I haven't got this far yet
+The **MAS Instance Application Set** contains .... (work in progress)
 
 
 ## GitOps with the MAS CLI
@@ -221,7 +221,7 @@ demo/demo1/ibm_entitlement
 demo/demo1/mongo
 ```
 
-### 8. Generate configuration for Maximo Application Suite Core Platform
+### 8. Install Maximo Application Suite Core Platform
 
 ```bash
 SECRET_KEY=xxx
@@ -253,12 +253,48 @@ Three new Applications will appear in ArgoCD once you commit these new files to 
 - `sls.demo.us-east-2.demo1.dev1`
 - `suite.demo.us-east-2.demo1.dev1`
 
-![alt text](image.png)
+![alt text](docs/img/04-suite.png)
 
 After the Suite License Service application is synched you will find one more entry has been created in Secret Manager, created automatically by it's post sync hook: `demo/demo1/dev1/sls`.
 
 The Suite application will not change to Healthy status until we complete the next step to configure it's connection to DRO, SLS, and MongoDb.
 
+### 9. Configure Maximo Application Suite Core Platform
+```bash
+SECRET_KEY=xxx
+ACCESS_KEY=xxx
+SM_PATH=xxx
+
+DRO_URL=$(oc get route ibm-data-reporter -n redhat-marketplace -ojsonpath='{.spec.host}')
+oc get secret clusteringresscertificatename -n openshift-ingress -ojsonpath='{.data.tls\.crt}' | base64 -d > dro_ca.crt
+
+mas gitops-suite-config -d /home/david/ibm-mas/gitops-demo \
+  --account-id demo \
+  --cluster-id demo1 \
+  --mas-instance-id dev1 \
+  --sm-aws-secret-region us-east-2 \
+  --sm-aws-secret-key $SECRET_KEY \
+  --sm-aws-access-key $ACCESS_KEY \
+  --secrets-path $SM_PATH \
+  --mongo-provider yaml \
+  --dro-url $DRO_URL \
+  --dro-contact-email iotf@uk.ibm.com \
+  --dro-contact-firstname David \
+  --dro-contact-lastname Parker \
+  --dro-ca-certificate-file dro_ca.crt
+```
+
+This will generate the 3 configurations that need to be applied to the Core Platform:
+- [/demo/us-east-2/demo1/dev1/configs/system.ibm-mas-bas-config.yaml](/demo/us-east-2/demo1/dev1/configs/system.ibm-mas-bas-config.yaml)
+- [/demo/us-east-2/demo1/configs/system.ibm-mas-mongo-config.yaml](/demo/us-east-2/demo1/dev1/configs/system.ibm-mas-mongo-config.yaml)
+- [/demo/us-east-2/demo1/configs/system.ibm-mas-sls-config.yaml](/demo/us-east-2/demo1/dev1/configs/system.ibm-mas-sls-config.yaml)
+
+Once these three new applications are synced and healthy the Suite application will change to report healthy status as well and you have successfully installed and configured the Maximo Application Suite Core Platform
+
+![alt text](docs/img/05-suitecfg.png)
+
+### 10. Next Steps - Application install
+This is still in active development, check back later for details on how to install and configure Maximo Applications using GitOps and ArgoCD.
 
 ## Useful Commands
 
