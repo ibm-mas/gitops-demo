@@ -244,16 +244,16 @@ mas gitops-suite -d /home/david/ibm-mas/gitops-demo \
   --mas-domain $DOMAIN
 ```
 This will generate three new configuration files:
-    - [/demo/us-east-2/demo1/dev1/ibm-mas-instance-base.yaml](/demo/us-east-2/demo1/dev1/ibm-mas-instance-base.yaml)
-    - [/demo/us-east-2/demo1/ibm-mas-suite.yaml](/demo/us-east-2/demo1/dev1/ibm-mas-suite.yaml)
-    - [/demo/us-east-2/demo1/ibm-sls.yaml](/demo/us-east-2/demo1/dev1/ibm-sls.yaml)
+- [/demo/us-east-2/demo1/dev1/ibm-mas-instance-base.yaml](/demo/us-east-2/demo1/dev1/ibm-mas-instance-base.yaml)
+- [/demo/us-east-2/demo1/ibm-mas-suite.yaml](/demo/us-east-2/demo1/dev1/ibm-mas-suite.yaml)
+- [/demo/us-east-2/demo1/ibm-sls.yaml](/demo/us-east-2/demo1/dev1/ibm-sls.yaml)
 
 Three new Applications will appear in ArgoCD once you commit these new files to the config repository:
 - `instance.demo.us-east-2.demo1.dev1`
 - `sls.demo.us-east-2.demo1.dev1`
 - `suite.demo.us-east-2.demo1.dev1`
 
-![alt text](docs/img/04-suite.png)
+![ArgoCD after MAS installation](docs/img/04-suite.png)
 
 After the Suite License Service application is synched you will find one more entry has been created in Secret Manager, created automatically by it's post sync hook: `demo/demo1/dev1/sls`.
 
@@ -291,14 +291,15 @@ This will generate the 3 configurations that need to be applied to the Core Plat
 
 Once these three new applications are synced and healthy the Suite application will change to report healthy status as well and you have successfully installed and configured the Maximo Application Suite Core Platform
 
-![alt text](docs/img/05-suitecfg.png)
+![ArgoCD during MAS configuration](docs/img/05-suitecfg.png)
 
-### 10. Next Steps - Application install
-This is still in active development, check back later for details on how to install and configure Maximo Applications using GitOps and ArgoCD.
-
-## Useful Commands
-
-### Secrets Manager: List All Secrets
+We can review all the secrets created during the install using the command below:
 ```bash
 aws secretsmanager list-secrets --output yaml --no-cli-pager | yq -r '.SecretList[].Name' | grep "^demo/demo1" | sort
 ```
+![Entries in Secret Manager](docs/img/06-secretmgr.png)
+
+### 10. Next Steps - Application install
+
+**The MAS ArgoCD applications are in active development, check back later for details on how to install and configure Maximo Applications using GitOps and ArgoCD!**
+
