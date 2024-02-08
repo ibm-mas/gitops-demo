@@ -1,0 +1,6 @@
+merge-key: "demo/us-east-2/demo1"
+
+ibm_dro:
+    dro_namespace: redhat-marketplace
+    ibm_entitlement_key: "<path:arn:aws:secretsmanager:us-east-2:435377327995:secret:demo/d1/ibm_entitlement#entitlement_key>"
+    run_sync_hooks: true

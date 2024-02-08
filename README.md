@@ -51,7 +51,6 @@ PAT=xxx
 
 mas gitops-bootstrap \
   --account-id demo \
-  --cluster-id d1 \
   --app-revision demo1 \
   --sm-aws-secret-region us-east-2 \
   --sm-aws-secret-key $SECRET_KEY \
@@ -73,6 +72,9 @@ Click "Sync" and after a short delay the application will change to "Synced" sta
     - [/demo/us-east-2/demo1/ibm-common-services.yaml](/demo/us-east-2/demo1/ibm-common-services.yaml)
     - [/demo/us-east-2/demo1/ibm-mas-cluster-base.yaml](/demo/us-east-2/demo1/ibm-mas-cluster-base.yaml)
     - [/demo/us-east-2/demo1/ibm-operator-catalog.yaml](/demo/us-east-2/demo1/ibm-operator-catalog.yaml)
+- The post sync hook in ibm-common-services will register two new secrets in AWS Secrets Manager:
+    - `demo/demo1/db2_default_channel`
+    - `demo/demo1/cluster_domain`
 
 ```bash
 USERNAME=xxx
@@ -107,8 +109,9 @@ The IBM Common Services and Operator Catalog applications will be visible as chi
 
 The Common Services application will take a little longer to syncronize because it first waits for the Operator Catalog to be ready before installing IBM Common Services from that catalog.
 
-![ArgoCD after reconcile](docs/img/02-cluster3.png)
+Within 10 minutes all applications should be reporting Healthy and Synced status.
 
+![ArgoCD after reconcile](docs/img/02-cluster3.png)
 
 ## Useful Commands
 
