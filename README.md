@@ -26,11 +26,13 @@ export IBMCLOUD_APIKEY=xxx
 mas provision-roks -r mas-development -c gitopsdemo -v 4.12_openshift --worker-count 3 --worker-flavor b3c.16x64.300gb --worker-zone lon02 --no-confirm
 ```
 
+When this completed you will be logged into the OCP cluster ready to continue.
+
 ### 2. Setup Secrets Manager
 Set up [AWS Secrets Manager](https://us-east-2.console.aws.amazon.com/secretsmanager/listsecrets?region=us-east-2), and [create an access key](https://us-east-1.console.aws.amazon.com/iam/home#/security_credentials?section=IAM_credentials)
 
 
-### 2. Bootstrap ArgoCD and create the Account Root Application
+### 3. Bootstrap ArgoCD and create the Account Root Application
 - Install ArgoCD operator
 - Create ArgoCD instance
 - Configure Secret Manager backend for ArgoCD
@@ -59,9 +61,12 @@ mas gitops-bootstrap \
   --github-pat $PAT
 ```
 You will end up with the root application and a single ApplicationSet deployed in ArgoCD as below:
-![ArgoCD post-bootstrap](docs/img/01-bootstrap.png)
+![ArgoCD post-bootstrap](docs/img/01-bootstrap1.png)
 
-### 2. Generate configuration for the Cluster Root Application
+Click "Sync" and after a short delay the application will change to "Synced" status:
+![ArgoCD post-bootstrap](docs/img/01-bootstrap2.png)
+
+### 4. Generate configuration for the Cluster Root Application
 - Create a new secret in AWS Secrets Manager `demo/demo1/ibm_entitlement` holding the image pull secret for the IBM Container Registry (which contains your IBM entitlement key)
 - Create a new secret in AWS Secrets Manager `demo/demo1/aws` holding the access token and secret token for AWS Secrets Manager, which is used by various ArgoCD sync hooks to make updates to secrets
 - Generate three new configuration files in the GitHub working directory:

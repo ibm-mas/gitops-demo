@@ -1,0 +1,6 @@
+merge-key: "demo/us-east-2/demo1"
+
+ibm_operator_catalog:
+    mas_catalog_version: v8-240130-amd64
+    mas_catalog_image: icr.io/cpopen/ibm-maximo-operator-catalog
+    ibm_entitlement_key: "<path:arn:aws:secretsmanager:us-east-2:435377327995:secret:demo/demo1/ibm_entitlement#image_pull_secret_b64>"
