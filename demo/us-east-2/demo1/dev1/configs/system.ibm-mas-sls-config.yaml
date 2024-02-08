@@ -1,0 +1,35 @@
+mas_config_name: "dev1-sls-system"
+mas_config_chart: ibm-mas-sls-config
+mas_config_scope: system
+mas_workspace_id: 
+mas_application_id: 
+mas_config_kind: "slscfgs"
+mas_config_api_version: "config.mas.ibm.com"
+
+mas_instance_id: dev1
+registration_key: <path:arn:aws:secretsmanager:us-east-2:435377327995:secret:demo/demo1/dev1/sls#registration_key>
+url: "https://sls.mas-dev1-sls.svc"
+ca:
+  crt: |
+    -----BEGIN CERTIFICATE-----
+    MIIDvDCCAqSgAwIBAgIQeJdoqHHvbwsVLsKRBUU9tzANBgkqhkiG9w0BAQsFADB4
+    MQswCQYDVQQGEwJHQjEPMA0GA1UEBxMGTG9uZG9uMQ8wDQYDVQQJEwZMb25kb24x
+    LTArBgNVBAsTJElCTSBTdWl0ZSBMaWNlbnNlIFNlcnZpY2UgKEludGVybmFsKTEY
+    MBYGA1UEAxMPc2xzLnNscy5pYm0uY29tMB4XDTI0MDIwODE5MzIzN1oXDTQ0MDIw
+    MzE5MzIzN1oweDELMAkGA1UEBhMCR0IxDzANBgNVBAcTBkxvbmRvbjEPMA0GA1UE
+    CRMGTG9uZG9uMS0wKwYDVQQLEyRJQk0gU3VpdGUgTGljZW5zZSBTZXJ2aWNlIChJ
+    bnRlcm5hbCkxGDAWBgNVBAMTD3Nscy5zbHMuaWJtLmNvbTCCASIwDQYJKoZIhvcN
+    AQEBBQADggEPADCCAQoCggEBAMBGuHgmVKZ9Qy53FZHEPVrSle4mvcfqOk8NeiaM
+    MA+w0h4JT6CHB4PqQbM0sCsfHgYCdzd7UKVaUCYqxlNN8Ppi+0uNEvykHSpgihJw
+    PSXWXcVyJOLvijC16mBCu3hLhO8LLVUoYCvP7n7J9eU+IjjSNcI9RLVH/tNyTmgQ
+    vJcAoZWLNZiPUM0aRlcIskOliBvChc0qHRiGABYFfEZcvKKj2ZFSVaGSZqlQ6bFu
+    013R52lpyD4ebwkhIjv/32pdB2BvxtwmrgAFKNT0ZwZP1fiYA3DcV/9T0aM3tyAV
+    wdsSFsr7qyd9NRvC0uiWeTHaaZF1Hcy3kH9n6u6srGBXCakCAwEAAaNCMEAwDgYD
+    VR0PAQH/BAQDAgIEMA8GA1UdEwEB/wQFMAMBAf8wHQYDVR0OBBYEFKqley0dCI98
+    1pN9LK3AjkqWfo7dMA0GCSqGSIb3DQEBCwUAA4IBAQAeAb6zBRbv2UMuqowCPFgP
+    IQ7c3LUkHDWYzCnwb0ehuGsqVSegHVYgQ+8gCAejMg6RIEarvJDZwnIteUku2pvv
+    /cU4bCF4kWp8Fi1opfqY+N4F/eOMmXgo9nX0PytrfI6z1TCZ1kPHCWSosujfvJg8
+    5m1atwYqzqf2tsr1NyfIOEAbKGg3WGKtRirPoiBlhVwvnsUcAO4nDQQLtqdsFLOt
+    SjlPExw6Or5nnR5A10QEP9cvYuzHsyoGQZHoM8DG1pF3ove92vYbjLqOsH5ecnOD
+    6theA7DagK2k8Syu2XCzlL+LP70DV7MUV2lv3EBffArvamh4AGU8IZW1bQ8PRfR5
+    -----END CERTIFICATE-----

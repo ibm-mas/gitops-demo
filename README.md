@@ -164,7 +164,6 @@ Running `mas gitops-mongo` will now generate a new secret (`demo/demo1/mongo`)in
 ```bash
 SECRET_KEY=xxx
 ACCESS_KEY=xxx
-SM_PATH=xxx
 
 USERNAME=xxx
 PASSWORD=xxx
@@ -181,7 +180,7 @@ mas gitops-mongo \
   --mongo-password $PASSWORD
 ```
 
-### 7. Configure MongoDb Account for Maximo Application Suite Instance
+### 7. Configure MongoDb Account for Maximo Application Suite Core Platform
 
 ```bash
 SECRET_KEY=xxx
@@ -197,7 +196,7 @@ aws secretsmanager create-secret --name "demo/demo1/dev1/mongo" \
   --secret-string '{"username": "'$USERNAME'", "password": "'$PASSWORD'"}'
 ```
 
-### 8. Configure License File for Maximo Application Suite Instance
+### 8. Configure License File for Maximo Application Suite Core Platform
 ```bash
 mas gitops-license \
   --account-id $ACCOUNT_ID \
@@ -221,6 +220,45 @@ demo/demo1/dro
 demo/demo1/ibm_entitlement
 demo/demo1/mongo
 ```
+
+### 8. Generate configuration for Maximo Application Suite Core Platform
+
+```bash
+SECRET_KEY=xxx
+ACCESS_KEY=xxx
+SM_PATH=xxx
+
+DOMAIN=xxx
+
+mas gitops-suite -d /home/david/ibm-mas/gitops-demo \
+  --account-id demo \
+  --cluster-id demo1 \
+  --mas-instance-id dev1 \
+  --sm-aws-secret-region us-east-2 \
+  --sm-aws-secret-key $SECRET_KEY \
+  --sm-aws-access-key $ACCESS_KEY \
+  --secrets-path $SM_PATH \
+  --mongo-provider yaml \
+  --sls-channel 3.x \
+  --mas-channel 8.11.x \
+  --mas-domain $DOMAIN
+```
+This will generate three new configuration files:
+    - [/demo/us-east-2/demo1/dev1/ibm-mas-instance-base.yaml](/demo/us-east-2/demo1/dev1/ibm-mas-instance-base.yaml)
+    - [/demo/us-east-2/demo1/ibm-mas-suite.yaml](/demo/us-east-2/demo1/dev1/ibm-mas-suite.yaml)
+    - [/demo/us-east-2/demo1/ibm-sls.yaml](/demo/us-east-2/demo1/dev1/ibm-sls.yaml)
+
+Three new Applications will appear in ArgoCD once you commit these new files to the config repository:
+- `instance.demo.us-east-2.demo1.dev1`
+- `sls.demo.us-east-2.demo1.dev1`
+- `suite.demo.us-east-2.demo1.dev1`
+
+![alt text](image.png)
+
+After the Suite License Service application is synched you will find one more entry has been created in Secret Manager, created automatically by it's post sync hook: `demo/demo1/dev1/sls`.
+
+The Suite application will not change to Healthy status until we complete the next step to configure it's connection to DRO, SLS, and MongoDb.
+
 
 ## Useful Commands
 
