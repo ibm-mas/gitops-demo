@@ -1,0 +1,11 @@
+merge-key: "demo/us-east-2/demo1/dev1"
+
+ibm_mas_suite:
+  ibm_entitlement_key: "<path:arn:aws:secretsmanager:us-east-2:435377327995:secret:demo/demo1/ibm_entitlement#image_pull_secret_b64>"
+  domain: "dev1.gitopsdemo2-6f1620198115433da1cac8216c06779b-0000.eu-gb.containers.appdomain.cloud"
+  mas_instance_id: "dev1"
+  mas_channel: "8.11.x"
+  icr_cp: cp.icr.io/cp
+  icr_cp_open: icr.io/cpopen
+  run_sync_hooks: true
+  mas_manual_cert_mgmt: False

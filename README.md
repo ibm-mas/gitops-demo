@@ -113,9 +113,118 @@ Within 10 minutes all applications should be reporting Healthy and Synced status
 
 ![ArgoCD after reconcile](docs/img/02-cluster3.png)
 
+
+### 5. Generate configuration for DRO
+- Generate one new configuration file in the GitHub working directory:
+    - [/demo/us-east-2/demo1/ibm-dro.yaml](/demo/us-east-2/demo1/ibm-dro.yaml)
+- The post sync hook in ibm-dro will register a new secret in AWS Secrets Manager: `demo/demo1/dro`
+
+```bash
+SECRET_KEY=xxx
+ACCESS_KEY=xxx
+SM_PATH=xxx
+
+mas gitops-dro -d /home/david/ibm-mas/gitops-demo \
+  --account-id demo \
+  --cluster-id demo1 \
+  --sm-aws-secret-region us-east-2 \
+  --sm-aws-secret-key $SECRET_KEY \
+  --sm-aws-access-key $ACCESS_KEY \
+  --secrets-path $SM_PATH
+```
+
+You must now push this change to your branch, as soon as you do this you will see the new application generated in ArgoCD as below, it should take less than 10 minutes for this application to reach Healthy/Synced status:
+
+![ArgoCD after DRO install](docs/img/03-dro.png)
+
+### 6. Generate configuration for MongoDb
+In this example we are going to be using an off-cluster MongoDB instance.  First, create a configuration file in the following format containing the details required to connect to your MongoDb instance:
+```yaml
+config:
+  configDb: admin
+  authMechanism: DEFAULT
+  retryWrites: true
+  hosts:
+    - host: host1
+      port: 32500
+    - host: host2
+      port: 32500
+    - host: host3
+      port: 32500
+certificates:
+  - alias: ca
+    crt: |
+      -----BEGIN CERTIFICATE-----
+      <certificate body>
+      -----END CERTIFICATE-----
+```
+
+Running `mas gitops-mongo` will now generate a new secret (`demo/demo1/mongo`)in AWS Secrets Manager holding all the information necessary to connect, which will be used by the IBM Suite License Service and any instances of IBM Maximo Application Suite installed on this cluster.
+
+```bash
+SECRET_KEY=xxx
+ACCESS_KEY=xxx
+SM_PATH=xxx
+
+USERNAME=xxx
+PASSWORD=xxx
+
+mas gitops-mongo \
+  -a demo \
+  -c demo1 \
+  --sm-aws-secret-region us-east-2 \
+  --sm-aws-secret-key $SECRET_KEY \
+  --sm-aws-access-key $ACCESS_KEY \
+  --mongo-provider yaml \
+  --yaml-file $MONGO_INFO_YAML_PATH \
+  --mongo-username $USERNAME \
+  --mongo-password $PASSWORD
+```
+
+### 7. Configure MongoDb Account for Maximo Application Suite Instance
+
+```bash
+SECRET_KEY=xxx
+ACCESS_KEY=xxx
+
+USERNAME=xxx
+PASSWORD=xxx
+
+aws configure set default.region us-east-2
+aws configure set aws_access_key_id $ACCESS_KEY
+aws configure set aws_secret_access_key $SECRET_KEY
+aws secretsmanager create-secret --name "demo/demo1/dev1/mongo" \
+  --secret-string '{"username": "'$USERNAME'", "password": "'$PASSWORD'"}'
+```
+
+### 8. Configure License File for Maximo Application Suite Instance
+```bash
+mas gitops-license \
+  --account-id $ACCOUNT_ID \
+  --cluster-id $CLUSTER_ID \
+  --sm-aws-secret-region us-east-2 \
+  --sm-aws-secret-key $SECRET_KEY \
+  --sm-aws-access-key $ACCESS_KEY \
+  --license-file entitlement.lic
+```
+
+This will create another new entry to Secret Manager: `demo/demo1/dev1/license`.  We should now have 8 secrets in total, as below:
+
+```bash
+aws secretsmanager list-secrets --output yaml --no-cli-pager | yq -r '.SecretList[].Name' | grep "^demo/demo1" | sort
+demo/demo1/aws
+demo/demo1/cluster_domain
+demo/demo1/db2_default_channel
+demo/demo1/dev1/license
+demo/demo1/dev1/mongo
+demo/demo1/dro
+demo/demo1/ibm_entitlement
+demo/demo1/mongo
+```
+
 ## Useful Commands
 
 ### Secrets Manager: List All Secrets
 ```bash
-aws secretsmanager list-secrets --output yaml --no-cli-pager | yq -r '.SecretList[].Name' | grep "^demo/demo1"
+aws secretsmanager list-secrets --output yaml --no-cli-pager | yq -r '.SecretList[].Name' | grep "^demo/demo1" | sort
 ```
