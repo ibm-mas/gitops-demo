@@ -70,6 +70,12 @@ You will end up with the root application and a single ApplicationSet deployed i
     - [/demo/us-east-2/demo1/ibm-operator-catalog.yaml](/demo/us-east-2/demo1/ibm-operator-catalog.yaml)
 
 ```bash
+USERNAME=xxx
+PASSWORD=xxx
+SECRET_KEY=xxx
+ACCESS_KEY=xxx
+SM_PATH=xxx
+
 mas gitops-cluster -d /home/david/ibm-mas/gitops-demo \
   --account-id demo \
   --cluster-id demo1 \
@@ -87,13 +93,16 @@ mas gitops-cluster -d /home/david/ibm-mas/gitops-demo \
 ```
 
 You must now push these changes to the branch specified when you bootstrapped ArgoCD (in this case `001`), as soon as you do this you will see three new applications generated in ArgoCD as below:
+
 ![ArgoCD post-cluster](docs/img/02-cluster1.png)
 
 The IBM Common Services and Operator Catalog applications will be visible as childen of the cluster application set
+
 ![ArgoCD post-cluster](docs/img/02-cluster2.png)
 
 The Common Services application will take a little longer to syncronize because it first waits for the Operator Catalog to be ready before installing IBM Common Services from that catalog.
-![ArgoCD post-cluster](docs/img/02-cluster3.png)
+
+![ArgoCD after reconcile](docs/img/02-cluster3.png)
 
 
 ## Useful Commands
