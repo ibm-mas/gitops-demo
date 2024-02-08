@@ -65,14 +65,13 @@ You will end up with the root application and a single ApplicationSet deployed i
 - Create a new secret in AWS Secrets Manager `demo/demo1/ibm_entitlement` holding the image pull secret for the IBM Container Registry (which contains your IBM entitlement key)
 - Create a new secret in AWS Secrets Manager `demo/demo1/aws` holding the access token and secret token for AWS Secrets Manager, which is used by various ArgoCD sync hooks to make updates to secrets
 - Generate three new configuration files in the GitHub working directory:
-    - [/demo/eu-gb/demo1/ibm-common-services.yaml](/demo/eu-gb/demo1/ibm-common-services.yaml)
-    - [/demo/eu-gb/demo1/ibm-mas-cluster-base.yaml](/demo/eu-gb/demo1/ibm-mas-cluster-base.yaml)
-    - [/demo/eu-gb/demo1/ibm-operator-catalog.yaml](/demo/eu-gb/demo1/ibm-operator-catalog.yaml)
+    - [/demo/us-east-2/demo1/ibm-common-services.yaml](/demo/us-east-2/demo1/ibm-common-services.yaml)
+    - [/demo/us-east-2/demo1/ibm-mas-cluster-base.yaml](/demo/us-east-2/demo1/ibm-mas-cluster-base.yaml)
+    - [/demo/us-east-2/demo1/ibm-operator-catalog.yaml](/demo/us-east-2/demo1/ibm-operator-catalog.yaml)
 
 ```bash
 mas gitops-cluster -d /home/david/ibm-mas/gitops-demo \
   --account-id demo \
-  --region-id eu-gb \
   --cluster-id demo1 \
   --icr-username $USER \
   --icr-password $PASSWORD \
@@ -101,5 +100,5 @@ The Common Services application will take a little longer to syncronize because 
 
 ### Secrets Manager: List All Secrets
 ```bash
-aws secretsmanager list-secrets --output yaml --no-cli-pager | yq -r '.SecretList[].Name'
+aws secretsmanager list-secrets --output yaml --no-cli-pager | yq -r '.SecretList[].Name' | grep "^demo/demo1"
 ```

@@ -1,10 +1,10 @@
-merge-key: "demo/eu-gb/demo1"
+merge-key: "demo/us-east-2/demo1"
 
 account:
   id: demo
 
 region:
-  id: eu-gb
+  id: us-east-2
 
 cluster:
   id: demo1

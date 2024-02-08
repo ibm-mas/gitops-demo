@@ -1,4 +1,4 @@
-merge-key: "demo/eu-gb/demo1"
+merge-key: "demo/us-east-2/demo1"
 
 ibm_operator_catalog:
     mas_catalog_version: v8-240130-amd64
