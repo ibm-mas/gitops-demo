@@ -40,16 +40,16 @@ We have automated the steps to install MAS via GitOps, you will not need to use 
 
 ### Naming Restrictions
 
-**Naming Length Restrictions** Because we stictch together the different IDs that form the hierarchy together we need to ensure that the total length is less than the 64 character limit of ArgoCD applications, to achieve this follow these restrictions when setting values for `--account-id`, -`region-id`, `--cluster-id`, and `--mas-instance-id`:
+**Naming Length Restrictions** Because we stitch together the different IDs that form the hierarchy together we need to ensure that the total length is less than the 64 character limit of ArgoCD applications, to achieve this follow these restrictions when setting values for `--account-id`, -`region-id`, `--cluster-id`, and `--mas-instance-id`:
 
 - **Account ID**: 8 characters
 - **Region ID**: 14 characters
 - **Cluster ID**: 7 characters
 - **MAS instance ID**: 5 characters
 
-**Why such long application names?** This is primaarily due to a limitation we have inherited to be compatible with internal IBM systems where we must have everything under a single ArgoCD project. We would like to support single/multi-project configurations in the long term, but it's not a priority at the moment.
+**Why such long application names?** This is primarily due to a limitation we have inherited to be compatible with internal IBM systems where we must have everything under a single ArgoCD project. We would like to support single/multi-project configurations in the long term, but it's not a priority at the moment.
 
-The naming structure in use today is not final, and we do expect to relx these restrictions before the first release.
+The naming structure in use today is not final, and we do expect to relax these restrictions before the first release.
 
 
 ### 1. Provision an OCP Cluster
