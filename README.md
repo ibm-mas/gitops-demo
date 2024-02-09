@@ -38,6 +38,20 @@ The **MAS Applications Application Set**  generates two Applications representin
 ## GitOps with the MAS CLI
 We have automated the steps to install MAS via GitOps, you will not need to use the MAS CLI to use our ArgoCD applications, but at this stage of development there is no documentation in place for this.
 
+### Naming Restrictions
+
+**Naming Length Restrictions** Because we stictch together the different IDs that form the hierarchy together we need to ensure that the total length is less than the 64 character limit of ArgoCD applications, to achieve this follow these restrictions when setting values for `--account-id`, -`region-id`, `--cluster-id`, and `--mas-instance-id`:
+
+- **Account ID**: 8 characters
+- **Region ID**: 14 characters
+- **Cluster ID**: 7 characters
+- **MAS instance ID**: 5 characters
+
+**Why such long application names?** This is primaarily due to a limitation we have inherited to be compatible with internal IBM systems where we must have everything under a single ArgoCD project. We would like to support single/multi-project configurations in the long term, but it's not a priority at the moment.
+
+The naming structure in use today is not final, and we do expect to relx these restrictions before the first release.
+
+
 ### 1. Provision an OCP Cluster
 ```bash
 export IBMCLOUD_APIKEY=xxx
@@ -343,4 +357,3 @@ aws secretsmanager list-secrets --output yaml --no-cli-pager | yq -r '.SecretLis
 ### 10. Next Steps - Application install
 
 **The MAS ArgoCD applications are in active development, check back later for details on how to install and configure Maximo Applications using GitOps and ArgoCD!**
-
