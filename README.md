@@ -21,22 +21,22 @@ The **Cluster Root Application Set** also includes the **[MAS Instance Applicati
 The **MAS Instance Application** also contains the **[MAS Configurations Application Set](https://github.com/ibm-mas/gitops/blob/demo1/root-applications/ibm-mas-instance-root/templates/configs-appset.yaml)** and **[MAS Applications Application Set](https://github.com/ibm-mas/gitops/blob/demo1/root-applications/ibm-mas-instance-root/templates/masapp-appset.yaml)**:
 
 The **MAS Configurations Application Set**  generates Applications representing the MAS configuration objects, and  a further Application to assist in the ordered uninstall of MAS:
-- [MAS Db2u JDBC Configuration](https://github.com/ibm-mas/gitops/blob/demo1/gapplications/ibm-db2u-jdbc-config)
-- [MAS Kafka Configuration](https://github.com/ibm-mas/gitops/blob/demo1/gapplications/ibm-kafka-config)
-- [MAS BAS Configuration](https://github.com/ibm-mas/gitops/blob/demo1/gapplications/ibm-mas-bas-config)
-- [MAS IDP Configuration](https://github.com/ibm-mas/gitops/blob/demo1/gapplications/ibm-mas-idp-config)
-- [MAS Mongo Configuration](https://github.com/ibm-mas/gitops/blob/demo1/gapplications/ibm-mas-mongo-config)
-- [MAS SLS Configuration](https://github.com/ibm-mas/gitops/blob/demo1/gapplications/ibm-mas-sls-config)
-- [MAS SMTP Configuration](https://github.com/ibm-mas/gitops/blob/demo1/gapplications/ibm-mas-smtp-config)
-- [MAS Configuration Cleanup](https://github.com/ibm-mas/gitops/blob/demo1/gapplications/ibm-mas-config-cleanup)
+- [MAS Db2u JDBC Configuration](https://github.com/ibm-mas/gitops/blob/demo1/applications/ibm-db2u-jdbc-config)
+- [MAS Kafka Configuration](https://github.com/ibm-mas/gitops/blob/demo1/applications/ibm-kafka-config)
+- [MAS BAS Configuration](https://github.com/ibm-mas/gitops/blob/demo1/applications/ibm-mas-bas-config)
+- [MAS IDP Configuration](https://github.com/ibm-mas/gitops/blob/demo1/applications/ibm-mas-idp-config)
+- [MAS Mongo Configuration](https://github.com/ibm-mas/gitops/blob/demo1/applications/ibm-mas-mongo-config)
+- [MAS SLS Configuration](https://github.com/ibm-mas/gitops/blob/demo1/applications/ibm-mas-sls-config)
+- [MAS SMTP Configuration](https://github.com/ibm-mas/gitops/blob/demo1/applications/ibm-mas-smtp-config)
+- [MAS Configuration Cleanup](https://github.com/ibm-mas/gitops/blob/demo1/applications/ibm-mas-config-cleanup)
 
 The **MAS Applications Application Set**  generates two Applications representing the installation and configuration of Maximo applications in the suite:
-- [MAS Application Installation](https://github.com/ibm-mas/gitops/blob/demo1/gapplications/ibm-mas-suite-app-install)
-- [MAS Application Configuration](https://github.com/ibm-mas/gitops/blob/demo1/gapplications/ibm-mas-suite-app-install)
+- [MAS Application Installation](https://github.com/ibm-mas/gitops/blob/demo1/applications/ibm-mas-suite-app-install)
+- [MAS Application Configuration](https://github.com/ibm-mas/gitops/blob/demo1/applications/ibm-mas-suite-app-install)
 
 
 ## GitOps with the MAS CLI
-We have automated the steps to install MAS via GitOps, you do not need to use the CLI, but the same basic process must be followed.
+We have automated the steps to install MAS via GitOps, you will not need to use the MAS CLI to use our ArgoCD applications, but at this stage of development there is no documentation in place for this.
 
 ### 1. Provision an OCP Cluster
 ```bash
@@ -51,6 +51,7 @@ Set up [AWS Secrets Manager](https://us-east-2.console.aws.amazon.com/secretsman
 
 
 ### 3. Bootstrap ArgoCD and create the Account Root Application
+The `mas gitops-bootstrap` function will perform the following actions:
 - Install ArgoCD operator
 - Create ArgoCD instance
 - Configure Secret Manager backend for ArgoCD
@@ -77,13 +78,17 @@ mas gitops-bootstrap \
   --github-revision 001 \
   --github-pat $PAT
 ```
+
 You will end up with the root application and a single ApplicationSet deployed in ArgoCD as below:
 ![ArgoCD post-bootstrap](docs/img/01-bootstrap1.png)
 
 Click "Sync" and after a short delay the application will change to "Synced" status:
 ![ArgoCD post-bootstrap](docs/img/01-bootstrap2.png)
 
+This is the only time we will directly make changes on the cluster, with the installation of the **Account Root Application** ArgoCD is ready to automatically deploy all necessary ArgoCD applications as you commit new configuration files to the GitHub configuration repository.
+
 ### 4. Generate configuration for the Cluster Root Application
+The `mas gitops-cluster` function will perform the following actions:
 - Create a new secret in AWS Secrets Manager `demo/demo1/ibm_entitlement` holding the image pull secret for the IBM Container Registry (which contains your IBM entitlement key)
 - Create a new secret in AWS Secrets Manager `demo/demo1/aws` holding the access token and secret token for AWS Secrets Manager, which is used by various ArgoCD sync hooks to make updates to secrets
 - Generate three new configuration files in the GitHub working directory:
@@ -133,9 +138,10 @@ Within 10 minutes all applications should be reporting Healthy and Synced status
 
 
 ### 5. Generate configuration for DRO
-- Generate one new configuration file in the GitHub working directory:
-    - [/demo/us-east-2/demo1/ibm-dro.yaml](/demo/us-east-2/demo1/ibm-dro.yaml)
-- The post sync hook in ibm-dro will register a new secret in AWS Secrets Manager: `demo/demo1/dro`
+The `mas gitops-dro` function will generate one new configuration file in the GitHub working directory:
+- [/demo/us-east-2/demo1/ibm-dro.yaml](/demo/us-east-2/demo1/ibm-dro.yaml)
+
+The post sync hook in ibm-dro will register a new secret in AWS Secrets Manager: `demo/demo1/dro`
 
 ```bash
 SECRET_KEY=xxx
@@ -261,6 +267,7 @@ mas gitops-suite -d /home/david/ibm-mas/gitops-demo \
   --mas-channel 8.11.x \
   --mas-domain $DOMAIN
 ```
+
 This will generate three new configuration files:
 - [/demo/us-east-2/demo1/dev1/ibm-mas-instance-base.yaml](/demo/us-east-2/demo1/dev1/ibm-mas-instance-base.yaml)
 - [/demo/us-east-2/demo1/ibm-mas-suite.yaml](/demo/us-east-2/demo1/dev1/ibm-mas-suite.yaml)
@@ -323,14 +330,15 @@ mas gitops-suite-workspace -d /home/david/ibm-mas/gitops-demo \
   --sm-aws-secret-region us-east-2
 ```
 
-After committing the generated configuration file, ArgoCD will install the Workspace application in the cluster:
+After committing the generated configuration file, ArgoCD will install the 12th and final ArgoCD Application will appear:
 
+![ArgoCD after Workspace commit](docs/img/06-workspace.png)
 
 We can review all the secrets created during the install using the command below:
 ```bash
 aws secretsmanager list-secrets --output yaml --no-cli-pager | yq -r '.SecretList[].Name' | grep "^demo/demo1" | sort
 ```
-![Entries in Secret Manager](docs/img/06-secretmgr.png)
+![Entries in Secret Manager](docs/img/07-secretmgr.png)
 
 ### 10. Next Steps - Application install
 
