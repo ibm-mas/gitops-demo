@@ -1,20 +1,39 @@
 # Maximo Application Suite GitOps Demo
 
+## Architecture
+![ArgoCD Architecture](docs/img/00-architecture.png)
+
 ## Overview
 
 During bootstrap we create the **[Account Root Application](https://github.com/ibm-mas/gitops/tree/demo1/root-applications/ibm-mas-account-root)**, this installs the **[Cluster Root Application Set](https://github.com/ibm-mas/gitops/tree/demo1/root-applications/ibm-mas-cluster-root)**.
 
-The **Cluster Root Application Set**  generates a **[Cluster Root Application](https://github.com/ibm-mas/gitops/tree/demo1/root-applications/ibm-mas-cluster-root)** for each cluster in the account. This contains the following Applications:
+The **Cluster Root Application Set**  generates a **[Cluster Root Application](https://github.com/ibm-mas/gitops/tree/demo1/root-applications/ibm-mas-cluster-root)**. This contains the following Applications:
 - [Operator Catalog](https://github.com/ibm-mas/gitops/blob/demo1/root-applications/ibm-mas-cluster-root/templates/ibm-operator-catalog-app.yaml)
 - [Common Services](https://github.com/ibm-mas/gitops/blob/demo1/root-applications/ibm-mas-cluster-root/templates/ibm-operator-common-services-app.yaml)
 - [DRO](https://github.com/ibm-mas/gitops/blob/demo1/root-applications/ibm-mas-cluster-root/templates/ibm-dro-app.yaml)
 - [Db2u](https://github.com/ibm-mas/gitops/blob/demo1/root-applications/ibm-mas-cluster-root/templates/ibm-db2u-app.yaml)
 - [CIS Compliance](https://github.com/ibm-mas/gitops/blob/demo1/root-applications/ibm-mas-cluster-root/templates/cis-compliance-app.yaml)
 
-The **Cluster Root Application Set** also contains the **MAS Instance Application Set**
-- [MAS Instance](https://github.com/ibm-mas/gitops/blob/demo1/root-applications/ibm-mas-cluster-root/templates/instance-appset.yaml)
+The **Cluster Root Application Set** also includes the **[MAS Instance Application Set](https://github.com/ibm-mas/gitops/blob/demo1/root-applications/ibm-mas-cluster-root/templates/instance-appset.yaml)**, which generates a **[MAS Instance Root Application](https://github.com/ibm-mas/gitops/tree/demo1/root-applications/ibm-mas-instance-root)** containing the following Applications:
+- [MAS Suite](https://github.com/ibm-mas/gitops/blob/demo1/root-applications/ibm-mas-instance-root/templates/ibm-mas-suite-app.yaml)
+- [MAS Workspace](https://github.com/ibm-mas/gitops/blob/demo1/root-applications/ibm-mas-instance-root/templates/ibm-mas-workspace.yaml)
+- [Suite License Service](https://github.com/ibm-mas/gitops/blob/demo1/root-applications/ibm-mas-instance-root/templates/ibm-sls-workspace.yaml)
 
-The **MAS Instance Application Set** contains .... (work in progress)
+The **MAS Instance Application** also contains the **[MAS Configurations Application Set](https://github.com/ibm-mas/gitops/blob/demo1/root-applications/ibm-mas-instance-root/templates/configs-appset.yaml)** and **[MAS Applications Application Set](https://github.com/ibm-mas/gitops/blob/demo1/root-applications/ibm-mas-instance-root/templates/masapp-appset.yaml)**:
+
+The **MAS Configurations Application Set**  generates Applications representing the MAS configuration objects, and  a further Application to assist in the ordered uninstall of MAS:
+- [MAS Db2u JDBC Configuration](https://github.com/ibm-mas/gitops/blob/demo1/gapplications/ibm-db2u-jdbc-config)
+- [MAS Kafka Configuration](https://github.com/ibm-mas/gitops/blob/demo1/gapplications/ibm-kafka-config)
+- [MAS BAS Configuration](https://github.com/ibm-mas/gitops/blob/demo1/gapplications/ibm-mas-bas-config)
+- [MAS IDP Configuration](https://github.com/ibm-mas/gitops/blob/demo1/gapplications/ibm-mas-idp-config)
+- [MAS Mongo Configuration](https://github.com/ibm-mas/gitops/blob/demo1/gapplications/ibm-mas-mongo-config)
+- [MAS SLS Configuration](https://github.com/ibm-mas/gitops/blob/demo1/gapplications/ibm-mas-sls-config)
+- [MAS SMTP Configuration](https://github.com/ibm-mas/gitops/blob/demo1/gapplications/ibm-mas-smtp-config)
+- [MAS Configuration Cleanup](https://github.com/ibm-mas/gitops/blob/demo1/gapplications/ibm-mas-config-cleanup)
+
+The **MAS Applications Application Set**  generates two Applications representing the installation and configuration of Maximo applications in the suite:
+- [MAS Application Installation](https://github.com/ibm-mas/gitops/blob/demo1/gapplications/ibm-mas-suite-app-install)
+- [MAS Application Configuration](https://github.com/ibm-mas/gitops/blob/demo1/gapplications/ibm-mas-suite-app-install)
 
 
 ## GitOps with the MAS CLI
