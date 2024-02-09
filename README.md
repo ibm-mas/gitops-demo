@@ -38,6 +38,12 @@ The **MAS Applications Application Set**  generates two Applications representin
 ## GitOps with the MAS CLI
 We have automated the steps to install MAS via GitOps, you will not need to use the MAS CLI to use our ArgoCD applications, but at this stage of development there is no documentation in place for this.
 
+Note: To access the same version of the MAS CLI used when creating this demo run the following command:
+
+```bash
+docker run -ti --pull always quay.io/ibmmas/cli:7.10.0-pre.demo1
+```
+
 ### Naming Restrictions
 
 **Naming Length Restrictions** Because we stitch together the different IDs that form the hierarchy together we need to ensure that the total length is less than the 64 character limit of ArgoCD applications, to achieve this follow these restrictions when setting values for `--account-id`, -`region-id`, `--cluster-id`, and `--mas-instance-id`:
