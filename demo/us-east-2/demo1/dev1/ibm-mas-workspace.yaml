@@ -1,0 +1,6 @@
+merge-key: "demo/us-east-2/demo1/dev1"
+
+ibm_mas_workspace:
+  mas_instance_id: dev1
+  mas_workspace_id: ws1
+  mas_workspace_name: My Workspace

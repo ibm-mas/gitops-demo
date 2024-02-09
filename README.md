@@ -311,6 +311,21 @@ Once these three new applications are synced and healthy the Suite application w
 
 ![ArgoCD during MAS configuration](docs/img/05-suitecfg.png)
 
+Finally (for this demo), we create the Workspace to complete the configuration of the Maximo Application Suite Core Platform:
+
+```bash
+mas gitops-suite-workspace -d /home/david/ibm-mas/gitops-demo \
+  --account-id demo \
+  --cluster-id demo1 \
+  --mas-instance-id dev1 \
+  --mas-workspace-id ws1 \
+  --mas-workspace-name "My Workspace" \
+  --sm-aws-secret-region us-east-2
+```
+
+After committing the generated configuration file, ArgoCD will install the Workspace application in the cluster:
+
+
 We can review all the secrets created during the install using the command below:
 ```bash
 aws secretsmanager list-secrets --output yaml --no-cli-pager | yq -r '.SecretList[].Name' | grep "^demo/demo1" | sort
