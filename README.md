@@ -87,8 +87,11 @@ The CLI allows arguments to be passed in both via command-line arguments and env
 
 ```bash
 export ACCOUNT_ID="demo"
-export CLUSTER_ID="demo2"
+export CLUSTER_ID="useast1a"
 export CLUSTER_URL="https://kubernetes.default.svc"
+export MAS_INSTANCE_ID="inst1"
+export MAS_WORKSPACE_ID="demo2ws"
+export MAS_WORKSPACE_NAME="demo2 workspace"
 
 
 export SM_AWS_REGION="us-east-1"
@@ -222,7 +225,8 @@ The `mas gitops-dro` function will generate one new configuration file in the Gi
 The post sync hook in ibm-dro will register a new secret in AWS Secrets Manager: `${ACCOUNT_ID}/${CLUSTER_ID/dro`
 
 ```bash
-mas gitops-dro --github-push
+mas gitops-dro \
+  --github-push
 ```
 
 After a few minutes you should see two new applications appear as children of the cluster root application. The DRO application itself, along with a small "cleanup" application. The cleanup application contains an ArgoCD [PostDelete hook](https://argo-cd.readthedocs.io/en/stable/user-guide/resource_hooks/) necessary to ensure the DRO application is cleaned up properly when its config is deleted from the git repository. 
@@ -240,7 +244,8 @@ The `mas gitops-db2u` function will generate one new configuration file in the G
 
 
 ```bash
-mas gitops-db2u --github-push
+mas gitops-db2u \
+  --github-push
 ```
 
 After a few minutes you should see a new db2u application appear as a child of the cluster root application.
@@ -251,6 +256,16 @@ It should take less than 10 minutes for this application to reach Healthy/Synced
 
 
 ### 6. Generate configuration for MongoDb
+> TODO: Could branch these instructions for users wishing to make use of docdb 
+> (i.e. `--mongo-provider aws`).
+
+> TODO: what is the cluster-level mongo secret actually used for when mongo-provider=yaml?
+> it might be that we only need the user to provide instance-level mongo secret in this demo
+>   used by gitops-suite (fetches secret and uses it to update the instance-level secret)
+>     we could change this to just pass in mongo yaml and username/password to the suite
+
+> TODO: make it clear that cluster admin mongo creds should be provided here
+
 In this example we are going to be using an off-cluster MongoDB instance.  First, create a configuration file in the following format containing the details required to connect to your MongoDb instance:
 ```yaml
 config:
@@ -272,130 +287,135 @@ certificates:
       -----END CERTIFICATE-----
 ```
 
-Running `mas gitops-mongo` will now generate a new secret (`demo/demo1/mongo`)in AWS Secrets Manager holding all the information necessary to connect, which will be used by the IBM Suite License Service and any instances of IBM Maximo Application Suite installed on this cluster.
+Running `mas gitops-mongo` will now generate a new secret (`${ACCOUNT_ID}/${CLUSTER_ID}/mongo`) in AWS Secrets Manager holding all the information necessary to connect, which will be used by the IBM Suite License Service and any instances of IBM Maximo Application Suite installed on this cluster.
 
 ```bash
-SECRET_KEY=xxx
-ACCESS_KEY=xxx
+MONGO_INFO_YAML_PATH="xxx"
 
-USERNAME=xxx
-PASSWORD=xxx
+MONGO_USERNAME="xxx"
+MONGO_PASSWORD="xxx"
 
 mas gitops-mongo \
-  -a demo \
-  -c demo1 \
-  --sm-aws-secret-region us-east-2 \
-  --sm-aws-secret-key $SECRET_KEY \
-  --sm-aws-access-key $ACCESS_KEY \
   --mongo-provider yaml \
   --yaml-file $MONGO_INFO_YAML_PATH \
-  --mongo-username $USERNAME \
-  --mongo-password $PASSWORD
+  --mongo-username "${MONGO_USERNAME}" \
+  --mongo-password "${MONGO_PASSWORD}"
 ```
 
 ### 7. Configure MongoDb Account for Maximo Application Suite Core Platform
-
+> TODO: could look at automating this step by adding support for "normal" Mongo to
+> instance-applications/010-ibm-sync-jobs/templates/00-aws-docdb-add-user_Job.yaml hook
 ```bash
-SECRET_KEY=xxx
-ACCESS_KEY=xxx
 
-USERNAME=xxx
-PASSWORD=xxx
+> TODO: make it clear that a separate user should be setup in Mongo for the MAS instance
+> Or, just advise to use the cluster admin creds configured above?
 
-aws configure set default.region us-east-2
-aws configure set aws_access_key_id $ACCESS_KEY
-aws configure set aws_secret_access_key $SECRET_KEY
-aws secretsmanager create-secret --name "demo/demo1/dev1/mongo" \
-  --secret-string '{"username": "'$USERNAME'", "password": "'$PASSWORD'"}'
+MONGO_INSTANCE_USERNAME="xxx"
+MONGO_INSTANCE_PASSWORD="xxx"
+
+aws configure set default.region ${SM_AWS_REGION}
+aws configure set aws_access_key_id ${SM_AWS_ACCESS_KEY_ID}
+aws configure set aws_secret_access_key ${SM_AWS_SECRET_ACCESS_KEY}
+aws secretsmanager create-secret --name "${ACCOUNT_ID}/${CLUSTER_ID}/${MAS_INSTANCE_ID}/mongo" \
+  --secret-string '{"username": "'${MONGO_INSTANCE_USERNAME}'", "password": "'${MONGO_INSTANCE_PASSWORD}'"}'
 ```
 
 ### 8. Configure License File for Maximo Application Suite Core Platform
 ```bash
+LICENSE_FILE_PATH="xxx"
+
 mas gitops-license \
-  --account-id ${ACCOUNT_ID} \
-  --cluster-id ${CLUSTER_ID} \
-  --sm-aws-secret-region us-east-2 \
-  --sm-aws-secret-key $SECRET_KEY \
-  --sm-aws-access-key $ACCESS_KEY \
-  --license-file entitlement.lic
+  --license-file "${LICENSE_FILE_PATH}"
 ```
 
-This will create another new entry to Secret Manager: `demo/demo1/dev1/license`.  We should now have 8 secrets in total, as below:
+This will create another new entry to Secret Manager: `${ACCOUNT_ID}/${CLUSTER_ID}/${MAS_INSTANCE_ID}/license`.  We should now have 8 (TODO: 7?) secrets in total, as below:
 
 ```bash
-aws secretsmanager list-secrets --output yaml --no-cli-pager | yq -r '.SecretList[].Name' | grep "^demo/demo1" | sort
-demo/demo1/aws
-demo/demo1/cluster_domain
-demo/demo1/db2_default_channel
-demo/demo1/dev1/license
-demo/demo1/dev1/mongo
-demo/demo1/dro
-demo/demo1/ibm_entitlement
-demo/demo1/mongo
+aws configure set default.region ${SM_AWS_REGION}
+aws configure set aws_access_key_id ${SM_AWS_ACCESS_KEY_ID}
+aws configure set aws_secret_access_key ${SM_AWS_SECRET_ACCESS_KEY}
+aws secretsmanager list-secrets --output yaml --no-cli-pager | yq -r '.SecretList[].Name' | grep "^${ACCOUNT_ID}/${CLUSTER_ID}" | sort
+aws-dev/mas-4/aws
+aws-dev/mas-4/cluster_domain
+aws-dev/mas-4/db2_default_channel
+aws-dev/mas-4/dro
+aws-dev/mas-4/ibm_entitlement
+aws-dev/mas-4/mongo   # TODO: remove this if we don't use cluster-level mongo secret in this demo
+aws-dev/mas-4/useast1a/license
+aws-dev/mas-4/useast1a/mongo
 ```
 
 ### 8. Install Maximo Application Suite Core Platform
 
 ```bash
-SECRET_KEY=xxx
-ACCESS_KEY=xxx
-SM_PATH=xxx
+OCP_DOMAIN="---.com"
+MAS_DOMAIN="${MAS_INSTANCE_ID}.apps.rosa.${OCP_DOMAIN}"
 
-DOMAIN=xxx
-
-mas gitops-suite -d /home/david/ibm-mas/gitops-demo \
-  --account-id demo \
-  --cluster-id demo1 \
-  --mas-instance-id dev1 \
-  --sm-aws-secret-region us-east-2 \
-  --sm-aws-secret-key $SECRET_KEY \
-  --sm-aws-access-key $ACCESS_KEY \
-  --secrets-path $SM_PATH \
-  --mongo-provider yaml \
+mas gitops-suite \
+  --github-push \
+  --mongo-provider aws \
+  --user-action "add" \
   --sls-channel 3.x \
   --mas-channel 8.11.x \
-  --mas-domain $DOMAIN
+  --mas-domain "${MAS_DOMAIN}"
 ```
 
 This will generate three new configuration files:
-- [/demo/us-east-2/demo1/dev1/ibm-mas-instance-base.yaml](/demo/us-east-2/demo1/dev1/ibm-mas-instance-base.yaml)
-- [/demo/us-east-2/demo1/ibm-mas-suite.yaml](/demo/us-east-2/demo1/dev1/ibm-mas-suite.yaml)
-- [/demo/us-east-2/demo1/ibm-sls.yaml](/demo/us-east-2/demo1/dev1/ibm-sls.yaml)
+- `/${ACCOUNT_ID}/${CLUSTER_ID}/${MAS_INSTANCE_ID}/ibm-mas-instance-base.yaml`
+- `/${ACCOUNT_ID}/${CLUSTER_ID}/${MAS_INSTANCE_ID}/ibm-mas-suite.yaml`
+- `/${ACCOUNT_ID}/${CLUSTER_ID}/${MAS_INSTANCE_ID}/ibm-sls.yaml`
 
-Three new Applications will appear in ArgoCD once you commit these new files to the config repository:
-- `instance.demo.us-east-2.demo1.dev1`
+
+After a few minutes you should see a new instance root application `TODO` appear as a child of the instance application set under the cluster root application:
+
+![cluster root app after MAS instance installation](docs/img002/05-inst1.png)
+
+Navigate to the instance root application by clicking the button indicated in the screenshot above.
+You will see three child applications:
 - `sls.demo.us-east-2.demo1.dev1`
 - `suite.demo.us-east-2.demo1.dev1`
 
-![ArgoCD after MAS installation](docs/img/04-suite.png)
+![instance root app after MAS instance installation](docs/img/05-inst2.png)
 
-After the Suite License Service application is synched you will find one more entry has been created in Secret Manager, created automatically by it's post sync hook: `demo/demo1/dev1/sls`.
+After the Suite License Service application is synched you will find one more entry has been created in Secret Manager, created automatically by its post sync hook: `${ACCOUNT_ID}/${CLUSTER_ID}/${MAS_INSTANCE_ID}/sls`.
 
-The Suite application will not change to Healthy status until we complete the next step to configure it's connection to DRO, SLS, and MongoDb.
+The Suite application will not change to Healthy status until we complete the next step to configure its connection to DRO, SLS, and MongoDb.
 
 ### 9. Configure Maximo Application Suite Core Platform
 ```bash
-SECRET_KEY=xxx
-ACCESS_KEY=xxx
-SM_PATH=xxx
 
-DRO_URL=$(oc get route ibm-data-reporter -n redhat-marketplace -ojsonpath='{.spec.host}')
-oc get secret clusteringresscertificatename -n openshift-ingress -ojsonpath='{.data.tls\.crt}' | base64 -d > dro_ca.crt
+mas gitops-mas-config \
+  --github-push \
+  --mas-config-type mongo \
+  --config-action upsert \
+  --mas-config-scope system \
+  --mongo-provider aws
 
-mas gitops-suite-config -d /home/david/ibm-mas/gitops-demo \
-  --account-id demo \
-  --cluster-id demo1 \
-  --mas-instance-id dev1 \
-  --sm-aws-secret-region us-east-2 \
-  --sm-aws-secret-key $SECRET_KEY \
-  --sm-aws-access-key $ACCESS_KEY \
-  --secrets-path $SM_PATH \
-  --mongo-provider yaml \
-  --dro-url $DRO_URL \
-  --dro-contact-email iotf@uk.ibm.com \
-  --dro-contact-firstname David \
-  --dro-contact-lastname Parker \
-  --dro-ca-certificate-file dro_ca.crt
+
+mas gitops-mas-config \
+  --github-push \
+  --mas-config-type sls \
+  --config-action upsert \
+  --mas-config-scope system
+
+
+DRO_CA_CERTIFICATE_FILE="/tmp/dro_ca.crt"
+
+# > TODO: document use of https://github.com/ibm-mas/ansible-devops/blob/master/ibm/mas_devops/common_tasks/get_ingress_cert.yml in case user doesn't know the name of this secret
+oc get secret default-ingress-cert -n openshift-ingress -ojsonpath='{.data.tls\.crt}' | base64 -d > ${DRO_CA_CERTIFICATE_FILE}
+
+# > TODO: where does this come from? It is optional in the script, but if not set, AVP refuses to render the app due to missing secret
+MAS_SEGMENT_KEY="xxx"
+mas gitops-mas-config \
+  --github-push \
+  --mas-config-type bas \
+  --config-action upsert \
+  --mas-config-scope system \
+  --dro-contact-email email.com \
+  --dro-contact-firstname joe \
+  --dro-contact-lastname bloggs \
+  --dro-ca-certificate-file $DRO_CA_CERTIFICATE_FILE \
+  --mas-segment-key "${MAS_SEGMENT_KEY}"
 ```
 
 This will generate the 3 configurations that need to be applied to the Core Platform:
@@ -407,16 +427,14 @@ Once these three new applications are synced and healthy the Suite application w
 
 ![ArgoCD during MAS configuration](docs/img/05-suitecfg.png)
 
-Finally (for this demo), we create the Workspace to complete the configuration of the Maximo Application Suite Core Platform:
+Next, we create the Workspace to complete the base configuration of the Maximo Application Suite Core Platform:
 
 ```bash
-mas gitops-suite-workspace -d /home/david/ibm-mas/gitops-demo \
-  --account-id demo \
-  --cluster-id demo1 \
-  --mas-instance-id dev1 \
-  --mas-workspace-id ws1 \
-  --mas-workspace-name "My Workspace" \
-  --sm-aws-secret-region us-east-2
+mas gitops-suite-workspace \
+  --github-push \
+  --mas-instance-id "${MAS_INSTANCE_ID}" \
+  --mas-workspace-id "${MAS_WORKSPACE_ID}" \
+  --mas-workspace-name "${MAS_WORKSPACE_NAME}"
 ```
 
 After committing the generated configuration file, ArgoCD will install the 12th and final ArgoCD Application will appear:
@@ -429,6 +447,391 @@ aws secretsmanager list-secrets --output yaml --no-cli-pager | yq -r '.SecretLis
 ```
 ![Entries in Secret Manager](docs/img/07-secretmgr.png)
 
-### 10. Next Steps - Application install
 
-**The MAS ArgoCD applications are in active development, check back later for details on how to install and configure Maximo Applications using GitOps and ArgoCD!**
+### 10. Configure DB2 Database for MAS Manage Application
+First, you'll need to create an EFS filesystem in the same region as your ROSA cluster, then create mount targets for the EFS filesystem in the same VPC and subnets as your ROSA cluster. Please refer to the [AWS documentation](https://docs.aws.amazon.com/efs/latest/ug/gs-step-two-create-efs-resources.html). Once created, determine the name of the associated StorageClass in the cluster (`oc get storageclasses`).
+
+
+```bash
+
+# The name of the EFS StorageClass in ROSA
+STORAGE_CLASS="efs-xxx"
+
+
+DB2_DATABASE_DB_CONFIG_YAML="/tmp/db2_database_db_config_manage.yaml"
+echo "
+CHNGPGS_THRESH: '40'
+DFT_QUERYOPT: '5'
+LOGBUFSZ: '1024'
+LOCKLIST: 'AUTOMATIC'
+MAXFILOP: '61440'
+NUM_IOCLEANERS: 'AUTOMATIC'
+NUM_IOSERVERS: 'AUTOMATIC'
+STMTHEAP: '20000'
+CUR_COMMIT: 'ON'
+AUTO_REVAL: 'DEFERRED'
+DEC_TO_CHAR_FMT: 'NEW'
+DATABASE_MEMORY: 'AUTOMATIC'
+PCKCACHESZ: 'AUTOMATIC'
+DBHEAP: 'AUTOMATIC'
+STAT_HEAP_SZ: 'AUTOMATIC'
+SOFTMAX: '0'
+CATALOGCACHE_SZ: '800'
+LOCKTIMEOUT: '300'
+LOGPRIMARY: '100'
+LOGSECOND: '156'
+LOGFILSIZ: '32768'
+LOGARCHMETH1: 'DISK:/mnt/bludata0/db2/archive_log/'
+MIRRORLOGPATH: '/mnt/backup/MIRRORLOGPATH'
+STMT_CONC: 'LITERALS'
+DDL_CONSTRAINT_DEF: 'YES'
+TRACKMOD: 'YES'
+AUTO_DEL_REC_OBJ: 'ON'
+REC_HIS_RETENTN: '60'
+NUM_DB_BACKUPS: '60'
+DFT_TABLE_ORG: 'ROW'
+AUTO_MAINT: 'ON'
+AUTO_TBL_MAINT: 'ON'
+AUTO_RUNSTATS: 'ON'
+AUTO_REORG: 'OFF'
+AUTO_DB_BACKUP: 'OFF'
+WLM_ADMISSION_CTRL: 'NO'
+SHEAPTHRES_SHR: 'automatic'
+SORTHEAP: 'automatic'
+AUTHN_CACHE_USERS: '100'
+AUTHN_CACHE_DURATION: '10'
+APPLHEAPSZ: '8192 AUTOMATIC'
+" > ${DB2_DATABASE_DB_CONFIG_YAML}
+
+
+
+DB2_INSTANCE_DBM_CONFIG_YAML_FILE="/tmp/db2_instance_dbm_config_manage.yaml"
+echo "
+AGENT_STACK_SZ: '1024'
+RQRIOBLK: '65535'
+HEALTH_MON: 'OFF'
+MON_HEAP_SZ: 'AUTOMATIC'
+KEEPFENCED: 'NO'
+FENCED_POOL: '50'
+" > ${DB2_INSTANCE_DBM_CONFIG_YAML_FILE}
+
+DB2_INSTANCE_REGISTRY_YAML_FILE="/tmp/db2_instance_registry_manage.yaml"
+echo "
+DB2_CDE_REDUCED_LOGGING: 'REDUCED_REDO:NO'
+DB2_OBJECT_STORAGE_LOCAL_STAGING_PATH: '/mnt/backup/staging'
+DB2_BCKP_PAGE_VERIFICATION: 'TRUE'
+DB2_WORKLOAD: 'MAXIMO'
+DB2_SKIPINSERTED: 'ON'
+DB2_INLIST_TO_NLJN: 'YES'
+DB2_MINIMIZE_LISTPREFETCH: 'Y'
+DB2_EVALUNCOMMITTED: 'YES'
+DB2_SKIPDELETED: 'ON'
+DB2_FMP_COMM_HEAPSZ: '65536'
+DB2_USE_ALTERNATE_PAGE_CLEANING: 'ON'
+DB2AUTH: 'OSAUTHDB,ALLOW_LOCAL_FALLBACK,PLUGIN_AUTO_RELOAD'
+DB2_4K_DEVICE_SUPPORT: 'ON'
+DB2_FMP_RUN_AS_CONNECTED_USER: 'NO'
+" > ${DB2_INSTANCE_REGISTRY_YAML_FILE}
+
+
+mas gitops-db2u-database \
+  --github-push \
+  --db2-version "s11.5.9.0-cn1" \
+  --db2-4k-device-support "" \
+  --db2-workload "" \
+  --db2-meta-storage-class "${STORAGE_CLASS}" \
+  --db2-backup-storage-class "${STORAGE_CLASS}" \
+  --db2-data-storage-class "${STORAGE_CLASS}" \
+  --db2-temp-storage-class "${STORAGE_CLASS}" \
+  --db2-logs-storage-class "${STORAGE_CLASS}" \
+  --db2-database-db-config-yaml "${DB2_DATABASE_DB_CONFIG_YAML}" \
+  --db2-instance-dbm-config-yaml "${DB2_INSTANCE_DBM_CONFIG_YAML_FILE}" \
+  --db2-instance-registry-yaml "${DB2_INSTANCE_REGISTRY_YAML_FILE}" \
+  --mas-app-id "manage"
+```
+
+
+### 11. Configure MAS with Manage DB2 Database
+
+```bash
+mas gitops-mas-config \
+  --github-push \
+  --mas-config-type jdbc \
+  --config-action upsert \
+  --mas-config-scope wsapp \
+  --mas-app-id "manage" \
+  --mas-workspace-id "${MAS_WORKSPACE_ID}" \
+  --db2-instance-name "db2wh-${MAS_INSTANCE_ID}-manage"
+```
+
+
+### 12. Install Manage
+
+```bash
+mas gitops-suite-app-install \
+  --github-push  \
+  --mas-app-id  "manage" \
+  --mas-app-channel  "8.7.x" \
+  --mas-app-catalog-source "ibm-operator-catalog" \
+  --mas-app-api-version "apps.mas.ibm.com/v1" \
+  --mas-app-kind "ManageApp" \
+  --mas-edition "essentials-maintenance"
+```
+
+
+### 13. Configure Manage
+
+```bash
+
+export DEFAULT_FILE_STORAGE_CLASS="${STORAGE_CLASS}"
+
+
+# > TODO: figure out a better way of generating the server bundles - maybe a seperate script for the user to run
+
+SB0_B64=$(echo -n '
+<?xml version='1.0' encoding='UTF-8'?>
+<server description="new server '${MAS_WORKSPACE_ID}'-manage-d--sb0--asc--sn">
+<featureManager>
+<feature>jndi-1.0</feature>
+<feature>wasJmsClient-2.0</feature>
+<feature>jmsMdb-3.2</feature>
+<feature>mdb-3.2</feature>
+</featureManager>
+    <jmsQueueConnectionFactory jndiName="jms/maximo/int/cf/intcf" connectionManagerRef="mifjmsconfact"><properties.wasJms remoteServerAddress="'${MAS_INSTANCE_ID}'-'${MAS_WORKSPACE_ID}'-jms.mas-'${MAS_INSTANCE_ID}'-manage.svc:7276:BootstrapBasicMessaging"/></jmsQueueConnectionFactory>
+    <connectionManager id="mifjmsconfact" maxPoolSize="20"/>
+    <jmsQueue jndiName="jms/maximo/int/queues/sqout"><properties.wasJms queueName="sqoutbd"/></jmsQueue>
+    <jmsQueue jndiName="jms/maximo/int/queues/sqin"><properties.wasJms queueName="sqinbd"/></jmsQueue>
+    <jmsQueue jndiName="jms/maximo/int/queues/cqin"><properties.wasJms queueName="cqinbd"/></jmsQueue>
+    <jmsQueue jndiName="jms/maximo/int/queues/cqinerr"><properties.wasJms queueName="cqinerrbd"/></jmsQueue>
+    <jmsQueue jndiName="jms/maximo/int/queues/cqout"><properties.wasJms queueName="cqoutbd"/></jmsQueue>
+    <jmsQueue jndiName="jms/maximo/int/queues/cqouterr"><properties.wasJms queueName="cqouterrbd"/></jmsQueue>
+    <jmsQueue jndiName="jms/maximo/int/queues/notf"><properties.wasJms queueName="notfbd"/></jmsQueue>
+    <jmsQueue jndiName="jms/maximo/int/queues/notferr"><properties.wasJms queueName="notferrbd"/></jmsQueue>
+</server>
+' | base64 -w0)
+
+
+SB1_B64=$(echo -n '
+<?xml version='1.0' encoding='UTF-8'?>
+<server description="new server '${MAS_WORKSPACE_ID}'-manage-d--sb1--asc--sn">
+<featureManager>
+<feature>jndi-1.0</feature>
+<feature>wasJmsClient-2.0</feature>
+<feature>jmsMdb-3.2</feature>
+<feature>mdb-3.2</feature>
+</featureManager>
+    <jmsQueueConnectionFactory jndiName="jms/maximo/int/cf/intcf" connectionManagerRef="mifjmsconfact"><properties.wasJms remoteServerAddress="'${MAS_INSTANCE_ID}'-'${MAS_WORKSPACE_ID}'-jms.mas-'${MAS_INSTANCE_ID}'-manage.svc:7276:BootstrapBasicMessaging"/></jmsQueueConnectionFactory>
+    <connectionManager id="mifjmsconfact" maxPoolSize="20"/>
+    <jmsQueue jndiName="jms/maximo/int/queues/sqout"><properties.wasJms queueName="sqoutbd"/></jmsQueue>
+    <jmsQueue jndiName="jms/maximo/int/queues/sqin"><properties.wasJms queueName="sqinbd"/></jmsQueue>
+    <jmsQueue jndiName="jms/maximo/int/queues/cqin"><properties.wasJms queueName="cqinbd"/></jmsQueue>
+    <jmsQueue jndiName="jms/maximo/int/queues/cqinerr"><properties.wasJms queueName="cqinerrbd"/></jmsQueue>
+    <jmsQueue jndiName="jms/maximo/int/queues/cqout"><properties.wasJms queueName="cqoutbd"/></jmsQueue>
+    <jmsQueue jndiName="jms/maximo/int/queues/cqouterr"><properties.wasJms queueName="cqouterrbd"/></jmsQueue>
+    <jmsQueue jndiName="jms/maximo/int/queues/notf"><properties.wasJms queueName="notfbd"/></jmsQueue>
+    <jmsQueue jndiName="jms/maximo/int/queues/notferr"><properties.wasJms queueName="notferrbd"/></jmsQueue>
+    <jmsActivationSpec id="maximomea/mboejb/JMSContQueueProcessor-1" maxEndpoints="5"><properties.wasJms destinationLookup="jms/maximo/int/queues/cqin" maxConcurrency="5" maxBatchSize="20" connectionFactoryLookup="jms/maximo/int/cf/intcf"/></jmsActivationSpec>
+    <jmsActivationSpec id="maximomea/mboejb/JMSContQueueProcessor-2" maxEndpoints="1"><properties.wasJms destinationLookup="jms/maximo/int/queues/cqinerr" maxConcurrency="1" maxBatchSize="20" connectionFactoryLookup="jms/maximo/int/cf/intcf"/></jmsActivationSpec>
+    <jmsActivationSpec id="maximomea/mboejb/JMSContOutQueueProcessor-1" maxEndpoints="5"><properties.wasJms destinationLookup="jms/maximo/int/queues/cqout" maxConcurrency="5" maxBatchSize="20" connectionFactoryLookup="jms/maximo/int/cf/intcf"/></jmsActivationSpec>
+    <jmsActivationSpec id="maximomea/mboejb/JMSContOutQueueProcessor-2" maxEndpoints="1"><properties.wasJms destinationLookup="jms/maximo/int/queues/cqouterr" maxConcurrency="1" maxBatchSize="20" connectionFactoryLookup="jms/maximo/int/cf/intcf"/></jmsActivationSpec>
+</server>
+' | base64 -w0)
+
+SB2_B64=$(echo -n '
+<?xml version="1.0" encoding="UTF-8"?>
+<server description="new server '${MAS_INSTANCE_ID}'-manage-d--sb2--asc--sn">
+
+  <!-- Enable features -->
+	<featureManager>
+	  <feature>wasJmsSecurity-1.0</feature>
+	  <feature>wasJmsServer-1.0</feature>
+  </featureManager>
+  <applicationManager autoExpand="true"/>
+  <wasJmsEndpoint host="*" wasJmsSSLPort="7286" wasJmsPort="7276" />
+  <messagingEngine>
+	  <fileStore path="jms/jmsstore"/>
+	  <queue id="sqoutbd" maintainStrictOrder="true" maxMessageDepth="100000" failedDeliveryPolicy="KEEP_TRYING" maxRedeliveryCount="-1"/>
+	  <queue id="sqinbd" maintainStrictOrder="true" maxMessageDepth="200000" failedDeliveryPolicy="KEEP_TRYING" maxRedeliveryCount="-1"/>
+	  <queue id="cqinerrbd" maxMessageDepth="100000" failedDeliveryPolicy="KEEP_TRYING"/>
+	  <queue id="cqinbd" maxMessageDepth="100000" exceptionDestination="cqinerrbd"/>
+	  <queue id="cqouterrbd" maxMessageDepth="100000" failedDeliveryPolicy="KEEP_TRYING"/>
+	  <queue id="cqoutbd" maxMessageDepth="100000" exceptionDestination="cqouterrbd"/>
+	  <queue id="notferrbd" maxMessageDepth="100000" failedDeliveryPolicy="KEEP_TRYING"/>
+	  <queue id="notfbd" maxMessageDepth="100000" exceptionDestination="notferrbd"/>
+  </messagingEngine>
+</server>
+' | base64 -w0)
+
+SB3_B64=$(echo -n '
+<?xml version='1.0' encoding='UTF-8'?>
+<server description="new server '${MAS_WORKSPACE_ID}'-manage-d--sb3--asc--sn">
+<featureManager>
+<feature>jndi-1.0</feature>
+<feature>wasJmsClient-2.0</feature>
+<feature>jmsMdb-3.2</feature>
+<feature>mdb-3.2</feature>
+</featureManager>
+    <jmsQueueConnectionFactory jndiName="jms/maximo/int/cf/intcf" connectionManagerRef="mifjmsconfact"><properties.wasJms remoteServerAddress="'${MAS_INSTANCE_ID}'-'${MAS_WORKSPACE_ID}'-jms.mas-'${MAS_INSTANCE_ID}'-manage.svc:7276:BootstrapBasicMessaging"/></jmsQueueConnectionFactory>
+    <connectionManager id="mifjmsconfact" maxPoolSize="20"/>
+    <jmsQueue jndiName="jms/maximo/int/queues/sqout"><properties.wasJms queueName="sqoutbd"/></jmsQueue>
+    <jmsQueue jndiName="jms/maximo/int/queues/sqin"><properties.wasJms queueName="sqinbd"/></jmsQueue>
+    <jmsQueue jndiName="jms/maximo/int/queues/cqin"><properties.wasJms queueName="cqinbd"/></jmsQueue>
+    <jmsQueue jndiName="jms/maximo/int/queues/cqinerr"><properties.wasJms queueName="cqinerrbd"/></jmsQueue>
+    <jmsQueue jndiName="jms/maximo/int/queues/cqout"><properties.wasJms queueName="cqoutbd"/></jmsQueue>
+    <jmsQueue jndiName="jms/maximo/int/queues/cqouterr"><properties.wasJms queueName="cqouterrbd"/></jmsQueue>
+    <jmsQueue jndiName="jms/maximo/int/queues/notf"><properties.wasJms queueName="notfbd"/></jmsQueue>
+    <jmsQueue jndiName="jms/maximo/int/queues/notferr"><properties.wasJms queueName="notferrbd"/></jmsQueue>
+    <jmsActivationSpec id="maximomea/mboejb/JMSContQueueProcessor-1" maxEndpoints="5"><properties.wasJms destinationLookup="jms/maximo/int/queues/cqin" maxConcurrency="5" maxBatchSize="20" connectionFactoryLookup="jms/maximo/int/cf/intcf"/></jmsActivationSpec>
+    <jmsActivationSpec id="maximomea/mboejb/JMSContQueueProcessor-2" maxEndpoints="1"><properties.wasJms destinationLookup="jms/maximo/int/queues/cqinerr" maxConcurrency="1" maxBatchSize="20" connectionFactoryLookup="jms/maximo/int/cf/intcf"/></jmsActivationSpec>
+    <jmsActivationSpec id="maximomea/mboejb/JMSContOutQueueProcessor-1" maxEndpoints="5"><properties.wasJms destinationLookup="jms/maximo/int/queues/cqout" maxConcurrency="5" maxBatchSize="20" connectionFactoryLookup="jms/maximo/int/cf/intcf"/></jmsActivationSpec>
+    <jmsActivationSpec id="maximomea/mboejb/JMSContOutQueueProcessor-2" maxEndpoints="1"><properties.wasJms destinationLookup="jms/maximo/int/queues/cqouterr" maxConcurrency="1" maxBatchSize="20" connectionFactoryLookup="jms/maximo/int/cf/intcf"/></jmsActivationSpec>
+</server>
+' | base64 -w0)
+
+SB4_B64=$(echo -n '
+<?xml version="1.0" encoding="UTF-8"?>
+<server description="new server '${MAS_WORKSPACE_ID}'-manage-d--sb4--asc--sn">
+
+  <!-- Enable features -->
+	<featureManager>
+	  <feature>wasJmsSecurity-1.0</feature>
+	  <feature>wasJmsServer-1.0</feature>
+  </featureManager>
+  <applicationManager autoExpand="true"/>
+  <wasJmsEndpoint host="*" wasJmsSSLPort="7286" wasJmsPort="7276" />
+  <messagingEngine>
+	  <fileStore path="jms/jmsstore"/>
+	  <queue id="sqoutbd" maintainStrictOrder="true" maxMessageDepth="100000" failedDeliveryPolicy="KEEP_TRYING" maxRedeliveryCount="-1"/>
+	  <queue id="sqinbd" maintainStrictOrder="true" maxMessageDepth="200000" failedDeliveryPolicy="KEEP_TRYING" maxRedeliveryCount="-1"/>
+	  <queue id="cqinerrbd" maxMessageDepth="100000" failedDeliveryPolicy="KEEP_TRYING"/>
+	  <queue id="cqinbd" maxMessageDepth="100000" exceptionDestination="cqinerrbd"/>
+	  <queue id="cqouterrbd" maxMessageDepth="100000" failedDeliveryPolicy="KEEP_TRYING"/>
+	  <queue id="cqoutbd" maxMessageDepth="100000" exceptionDestination="cqouterrbd"/>
+	  <queue id="notferrbd" maxMessageDepth="100000" failedDeliveryPolicy="KEEP_TRYING"/>
+	  <queue id="notfbd" maxMessageDepth="100000" exceptionDestination="notferrbd"/>
+  </messagingEngine>
+</server>
+' | base64 -w0)
+
+MANAGE_SERVER_BUNDLES_FILE="/tmp/manage-server-bundles.yaml"
+echo '
+mas_app_server_bundles_combined_add_server_config:
+  '${MAS_WORKSPACE_ID}'-manage-d--sb0--asc--sn: '${SB0_B64}'
+  '${MAS_WORKSPACE_ID}'-manage-d--sb1--asc--sn: '${SB1_B64}'
+  '${MAS_WORKSPACE_ID}'-manage-d--sb2--asc--sn: '${SB2_B64}'
+  '${MAS_WORKSPACE_ID}'-manage-d--sb3--asc--sn: '${SB3_B64}'
+  '${MAS_WORKSPACE_ID}'-manage-d--sb4--asc--sn: '${SB4_B64}'
+' > $MANAGE_SERVER_BUNDLES_FILE
+
+MANAGE_APPWS_SPEC_FILE="/tmp/manage-appws-spec.yaml"
+echo '
+mas_appws_spec:
+  bindings:
+    jdbc: workspace-application
+  components:
+    base: 
+      version: latest
+  settings:
+    aio:
+      install: true
+    db:
+      dbSchema: maximo
+      maxinst:
+        bypassUpgradeVersionCheck: false
+        db2Vargraphic: true
+        demodata: false
+        indexSpace: MAXINDEX
+        tableSpace: MAXDATA
+      updateDBCheck: true
+    deployment:
+      buildTag: latest
+      buildTagLimit: '10'
+      defaultJMS: true
+      mode: up
+      persistentVolumes:
+        - accessModes:
+            - ReadWriteMany
+          mountPath: /DOCLINKS
+          pvcName: manage-doclinks
+          size: 20Gi
+          storageClassName: '${STORAGE_CLASS}'
+        - accessModes:
+            - ReadWriteMany
+          mountPath: /bim
+          pvcName: manage-bim
+          size: 20Gi
+          storageClassName: '${STORAGE_CLASS}'
+        - accessModes:
+            - ReadWriteMany
+          mountPath: /jms
+          pvcName: manage-jms
+          size: 20Gi
+          storageClassName: '${STORAGE_CLASS}'
+      serverBundles:
+        - additionalServerConfig:
+            secretName: '${MAS_WORKSPACE_ID}'-manage-d--sb0--asc--sn
+          bundleType: ui
+          isDefault: true
+          isMobileTarget: true
+          isUserSyncTarget: false
+          name: ui
+          replica: 1
+          routeSubDomain: ui
+        - additionalServerConfig:
+            secretName: '${MAS_WORKSPACE_ID}'-manage-d--sb1--asc--sn
+          bundleType: mea
+          isDefault: false
+          isMobileTarget: false
+          isUserSyncTarget: true
+          name: mea
+          replica: 1
+          routeSubDomain: mea
+        - additionalServerConfig:
+            secretName: '${MAS_WORKSPACE_ID}'-manage-d--sb2--asc--sn
+          bundleType: report
+          isDefault: false
+          isMobileTarget: false
+          isUserSyncTarget: false
+          name: rpt
+          replica: 1
+          routeSubDomain: rpt
+        - additionalServerConfig:
+            secretName: '${MAS_WORKSPACE_ID}'-manage-d--sb3--asc--sn
+          bundleType: cron
+          isDefault: false
+          isMobileTarget: false
+          isUserSyncTarget: false
+          name: cron
+          replica: 1
+          routeSubDomain: cron
+        - additionalServerConfig:
+            secretName: '${MAS_WORKSPACE_ID}'-manage-d--sb4--asc--sn
+          bundleType: standalonejms
+          isDefault: false
+          isMobileTarget: false
+          isUserSyncTarget: false
+          name: jms
+          replica: 1
+          routeSubDomain: jms
+      serverTimezone: GMT
+    languages:
+      baseLang: EN
+      secondaryLangs: []
+' > ${MANAGE_APPWS_SPEC_FILE}
+
+
+mas gitops-suite-app-config \
+  --github-push \
+  --mas-app-id  "manage" \
+  --mas-app-kind "ManageApp" \
+  --mas-appws-api-version "apps.mas.ibm.com/v1" \
+  --mas-appws-kind "ManageWorkspace" \
+  --mas-appws-spec-yaml "${MANAGE_APPWS_SPEC_FILE}" \
+  --mas-app-server-bundles-combined-add-server-config-yaml "${MANAGE_SERVER_BUNDLES_FILE}"
+```
+
+
+# Known Issues / Troubleshooting
+
+If you change any values in secrets manager, you must hard-refresh the appropriate ArgoCD application in order for the updates to be picked up by ArgoCD
+> TODO: screenshot
