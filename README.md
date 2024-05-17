@@ -588,8 +588,7 @@ export DEFAULT_FILE_STORAGE_CLASS="${STORAGE_CLASS}"
 
 # > TODO: figure out a better way of generating the server bundles - maybe a seperate script for the user to run
 
-SB0_B64=$(echo -n '
-<?xml version='1.0' encoding='UTF-8'?>
+SB0_B64=$(echo -n '<?xml version="1.0" encoding="UTF-8"?>
 <server description="new server '${MAS_WORKSPACE_ID}'-manage-d--sb0--asc--sn">
 <featureManager>
 <feature>jndi-1.0</feature>
@@ -611,8 +610,7 @@ SB0_B64=$(echo -n '
 ' | base64 -w0)
 
 
-SB1_B64=$(echo -n '
-<?xml version='1.0' encoding='UTF-8'?>
+SB1_B64=$(echo -n '<?xml version="1.0" encoding="UTF-8"?>
 <server description="new server '${MAS_WORKSPACE_ID}'-manage-d--sb1--asc--sn">
 <featureManager>
 <feature>jndi-1.0</feature>
@@ -637,8 +635,7 @@ SB1_B64=$(echo -n '
 </server>
 ' | base64 -w0)
 
-SB2_B64=$(echo -n '
-<?xml version="1.0" encoding="UTF-8"?>
+SB2_B64=$(echo -n '<?xml version="1.0" encoding="UTF-8"?>
 <server description="new server '${MAS_INSTANCE_ID}'-manage-d--sb2--asc--sn">
 
   <!-- Enable features -->
@@ -662,8 +659,7 @@ SB2_B64=$(echo -n '
 </server>
 ' | base64 -w0)
 
-SB3_B64=$(echo -n '
-<?xml version='1.0' encoding='UTF-8'?>
+SB3_B64=$(echo -n '<?xml version="1.0" encoding="UTF-8"?>
 <server description="new server '${MAS_WORKSPACE_ID}'-manage-d--sb3--asc--sn">
 <featureManager>
 <feature>jndi-1.0</feature>
@@ -688,8 +684,7 @@ SB3_B64=$(echo -n '
 </server>
 ' | base64 -w0)
 
-SB4_B64=$(echo -n '
-<?xml version="1.0" encoding="UTF-8"?>
+SB4_B64=$(echo -n '<?xml version="1.0" encoding="UTF-8"?>
 <server description="new server '${MAS_WORKSPACE_ID}'-manage-d--sb4--asc--sn">
 
   <!-- Enable features -->
@@ -742,10 +737,8 @@ mas_appws_spec:
         demodata: false
         indexSpace: MAXINDEX
         tableSpace: MAXDATA
-      updateDBCheck: true
     deployment:
       buildTag: latest
-      buildTagLimit: '10'
       defaultJMS: true
       mode: up
       persistentVolumes:
@@ -831,7 +824,14 @@ mas gitops-suite-app-config \
 ```
 
 
+![ArgoCD after Manage activated](docs/img002/05-inst8.png)
+
+
 # Known Issues / Troubleshooting
 
 If you change any values in secrets manager, you must hard-refresh the appropriate ArgoCD application in order for the updates to be picked up by ArgoCD
 > TODO: screenshot
+
+
+Cert deprovisioning steps will hang unless using ArgoCD 2.11.0 or later. If on ArgoCD <2.11, ensure the following steps are performed manually to avoid the problem:
+> TODO
