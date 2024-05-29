@@ -2,7 +2,7 @@
 
 ## Overview
 
-IBM provides a collection of Helm charts intended for use with ArgoCD for employing the GitOps approach to manage many MAS instances spread across many OCP clusters. ArgoCD is installed on some OCP cluster. It obtains the MAS GitOps Helm charts from some _source_ Git repo (i.e. [ibm-mas/gitops](https://github.com/ibm-mas/gitops)). The _config_ Git repo holds configuration YAML files that define the desired structure and configuration of a collection of MAS instances. Secret values (which must be stored securely and not exposed in the _config_ Git repo) are fetched using the [ArgoCD Vault Plugin](https://argocd-vault-plugin.readthedocs.io/en/stable/) from some backend (e.g. AWS Secrets Manager).
+IBM provides a collection of Helm charts intended for use with ArgoCD for employing the GitOps approach to manage multiple MAS instances across multiple OCP clusters. ArgoCD is installed on some OCP cluster. It obtains the MAS GitOps Helm charts from some _source_ Git repo (i.e. [ibm-mas/gitops](https://github.com/ibm-mas/gitops)). The _config_ Git repo holds configuration YAML files that define the desired structure and configuration of a collection of MAS instances. Secret values (which must be stored securely and not exposed in the _config_ Git repo) are fetched using the [ArgoCD Vault Plugin](https://argocd-vault-plugin.readthedocs.io/en/stable/) from some backend (e.g. AWS Secrets Manager).
 
 ![ArgoCD Architecture](docs/img002/01-architecture.png)
 
@@ -25,7 +25,7 @@ The **Account Root Application** [Helm Chart]((https://github.com/ibm-mas/gitops
 - [Nvidia GPU Operator](https://github.com/ibm-mas/gitops/blob/demo2/root-applications/ibm-mas-cluster-root/templates/050-nvidia-gpu-operator-app) ([Helm Chart](https://github.com/ibm-mas/gitops/blob/demo2/cluster-applications/050-nvidia-gpu-operator))
 
 
-The **Cluster Root Application Set** also installs the **[MAS Instance Application Set](https://github.com/ibm-mas/gitops/blob/demo2/root-applications/ibm-mas-cluster-root/templates/099-instance-appset.yaml)**. This generates a set of **MAS Instance Root Applications** based on the configuration in the _config_ Git repo.  The **MAS Instance Root Application** [Helm Chart](https://github.com/ibm-mas/gitops/tree/demo2/root-applications/ibm-mas-instance-root) generates ArgoCD Applications that install and configure some instance-level dependencies (e.g. SLS, DB2 Databases), MAS Core and various (MAS) applications (e.g. Manage, Monitor, etc).
+The **Cluster Root Application** Helm Chart also installs the **[MAS Instance Root Application Set](https://github.com/ibm-mas/gitops/blob/demo2/root-applications/ibm-mas-cluster-root/templates/099-instance-appset.yaml)**. This generates a set of **MAS Instance Root Applications** based on the configuration in the _config_ Git repo.  The **MAS Instance Root Application** [Helm Chart](https://github.com/ibm-mas/gitops/tree/demo2/root-applications/ibm-mas-instance-root) generates ArgoCD Applications that install and configure some instance-level dependencies (e.g. SLS, DB2 Databases), MAS Core and various (MAS) applications (e.g. Manage, Monitor, etc).
 
 Some of these templates generate a single ArgoCD Application that renders its own Helm chart:
  
@@ -62,6 +62,95 @@ A special case is the [Suite Configs](https://github.com/ibm-mas/gitops/blob/dem
 - [SMTP](https://github.com/ibm-mas/gitops/blob/demo2/root-applications/ibm-mas-instance-root/templates/130-ibm-mas-smtp-config)
 - [COS](https://github.com/ibm-mas/gitops/blob/demo2/root-applications/ibm-mas-instance-root/templates/130-ibm-objectstorage-config)
 
+
+## Config Git Repository Structure
+
+The _Config_ Git repository represents the "source of truth" that defines everything ArgoCD needs to install and manage MAS instances. Configuration is structured as a hierarchy; with "accounts" (e.g. dev/prod/staging) at the top, followed by "clusters", followed by "instances". 
+
+Each account is managed by its own ArgoCD instance containing a single **Account Root Application**. 
+
+> **Why can't a single ArgoCD instance contain more than one Account Root Application?** This is primarily due to a limitation we have inherited to be compatible with internal IBM systems where we must have everything under a single ArgoCD project. We would like to support single/multi-project configurations in the long term, but it's not a priority at the moment.
+
+The _Config_ Git repository contains a tree of `.yaml` configuration files structured as follows:
+
+```
+├── <ACCOUNT_ID>
+│   └── <CLUSTER_ID>
+│       ├── <INSTANCE_ID>
+│       │   ├── ibm-db2u-databases.yaml
+│       │   ├── ibm-mas-instance-base.yaml
+│       │   ├── ibm-mas-masapp-assist-install.yaml
+│       │   ├── ibm-mas-masapp-configs.yaml
+│       │   ├── ibm-mas-masapp-iot-install.yaml
+│       │   ├── ibm-mas-masapp-manage-install.yaml
+│       │   ├── ibm-mas-masapp-monitor-install.yaml
+│       │   ├── ibm-mas-masapp-optimizer-install.yaml
+│       │   ├── ibm-mas-masapp-visualinspection-install.yaml
+│       │   ├── ibm-mas-suite-configs.yaml
+│       │   ├── ibm-mas-suite.yaml
+│       │   ├── ibm-mas-workspaces.yaml
+│       │   └── ibm-sls.yaml
+│       ├── ibm-db2u.yaml
+│       ├── ibm-dro.yaml
+│       ├── ibm-mas-cluster-base.yaml
+│       ├── ibm-operator-catalog.yaml
+│       ├── nvidia-gpu-operator.yaml
+│       └── redhat-cert-manager.yaml
+```
+
+These `.yaml` configuration files are monitored by [Git Generators](https://argo-cd.readthedocs.io/en/stable/operator-manual/applicationset/Generators-Git/#git-generator-files) on the [Cluster Root Application Set](https://github.com/ibm-mas/gitops/blob/demo2/root-applications/ibm-mas-account-root/templates/000-cluster-appset.yaml) (installed by the **Account Root Application**), and the [MAS Instance Application Set](https://github.com/ibm-mas/gitops/blob/demo2/root-applications/ibm-mas-cluster-root/templates/099-instance-appset.yaml) (installed by the **Cluster Root Application**). The **Cluster Root Application** and **MAS Instance Root Application** Helm Charts contain templates that are conditionally enabled when the associated configuration is picked up the Application Sets. For instance, `ibm-operator-catalog.yaml` contains:
+```yaml
+ibm_operator_catalog:
+    mas_catalog_version: xxx
+    mas_catalog_image: xxx
+```
+
+When the associated Git generator on the [Cluster Root Application Set](https://github.com/ibm-mas/gitops/blob/demo2/root-applications/ibm-mas-account-root/templates/000-cluster-appset.yaml) picks up this file:
+```yaml
+- git:
+    repoURL: "{{ .Values.generator.repo_url }}"
+    revision: "{{ .Values.generator.revision }}"
+    files:
+    - path: "{{ .Values.account.id }}/*/ibm-operator-catalog.yaml"
+```
+It will be added to the Helm values used to render the [Cluster Root Application Helm Chart](https://github.com/ibm-mas/gitops/tree/demo2/root-applications/ibm-mas-cluster-root). This will result in condition at the top of the [000-ibm-operator-catalog-app](https://github.com/ibm-mas/gitops/blob/demo2/root-applications/ibm-mas-cluster-root/templates/000-ibm-operator-catalog-app.yaml) evaluating to true:
+```
+{{- if not (empty .Values.ibm_operator_catalog) }}
+```
+This will result in ArgoCD installing the IBM Operator Catalog Application, which in turn will deploy the resources in the [000-ibm-operator-catalog Helm Chart](https://github.com/ibm-mas/gitops/blob/demo2cluster-applications/000-ibm-operator-catalog) to the target cluster.
+
+Here is the structure of an example _Config_ Git repo containing configuration for three accounts (`dev`, `staging`, `production`) with a number of clusters and MAS instances. For brevity, the actual `.yaml` files are not shown here.
+```
+├── dev
+│   ├── cluster1
+│   │   ├── instance1
+│   │   │   └── *.yaml
+│   │   ├── instance2
+│   │   │   └── *.yaml
+│   │   ├── instance3
+│   │   │   └── *.yaml
+│   │   └── *.yaml
+│   └── cluster2
+│       ├── *.yaml
+│       └── instance1
+│           └── *.yaml
+├── staging
+│   └── cluster1
+│       ├── instance1
+│       │   └── *.yaml
+│       ├── instance2
+│       │   └── *.yaml
+│       └── *.yaml
+└── production
+    └── cluster1
+        ├── *.yaml
+        ├── instance1
+        │   └── *.yaml
+        └── instance2
+            └── *.yaml
+```
+
+
 ## GitOps with the MAS CLI
 We have automated the steps to install MAS via GitOps, you will not need to use the MAS CLI to use our ArgoCD applications, but at this stage of development there is no documentation in place for this.
 
@@ -73,22 +162,14 @@ docker run -ti --pull always quay.io/ibmmas/cli:8.1.0-pre.gitops
 
 ### Naming Restrictions
 
-**Naming Length Restrictions** Because we stitch together the different IDs that form the hierarchy together we need to ensure that the total length is less than the 64 character limit of ArgoCD applications, to achieve this follow these restrictions when setting values for `--account-id`, -`region-id`, `--cluster-id`, and `--mas-instance-id`:
+**Naming Length Restrictions** Because we stitch together the different IDs that form the hierarchy together we need to ensure that the total length is less than the 64 character limit of ArgoCD applications, to achieve this follow these restrictions when setting values for `--cluster-id`, and `--mas-instance-id`:
 
-> TODO: these have changed - only cluster and mas instance ID are now significant.
-> TODO: 1 account ID per ArgoCD project.
-> TODO: cluster IDs must be unique across all regions in the same account.
-- **Account ID**: 8 characters
-- **Region ID**: 14 characters
-- **Cluster ID**: 7 characters
-- **MAS instance ID**: 5 characters
+- **Cluster ID**: 15 characters. Must be unique within an account.
+- **MAS instance ID**: 15 characters. Must be unique within a cluster.
 
-> TODO: we do support multi-project deployments now (root manifest param)
-**Why such long application names?** This is primarily due to a limitation we have inherited to be compatible with internal IBM systems where we must have everything under a single ArgoCD project. We would like to support single/multi-project configurations in the long term, but it's not a priority at the moment.
 
-The naming structure in use today is not final, and we do expect to relax these restrictions before the first release.
 
-> TODO: highlight assumption that ArgoCD and MAS live in the same cluster in this demo (although we do support off cluster argocd)
+
 
 ### 1. Provision an OCP Cluster
 > TODO: update this
@@ -107,12 +188,16 @@ Set up [AWS Secrets Manager](https://us-east-2.console.aws.amazon.com/secretsman
 ### 3. Setup common environment variables
 > TODO: document the meaning of each section of env vars
 
-The CLI allows arguments to be passed in both via command-line arguments and environment variables. For repeated parameters that are used by many of the functions that we are going to call, we are going to export them as environment variables so we don't have to specify them every time. Please customize the variables below and run the following in your mas-cli terminal session:
+The CLI allows arguments to be passed in both via command-line arguments and environment variables. For repeated parameters that are used by many of the functions that we are going to call, we are going to export them as environment variables so we don't have to specify them every time. Please customize the values in the script below, then run it in your mas-cli terminal session:
 
 ```bash
-export ACCOUNT_ID="demo"
+export ACCOUNT_ID="dev"
 export CLUSTER_ID="useast1a"
+
+# This will determine the OCP cluster that ArgoCD targets.
+# In this tutorial, we are deploying a single MAS instance in the same cluster as ArgoCD.
 export CLUSTER_URL="https://kubernetes.default.svc"
+
 export MAS_INSTANCE_ID="inst1"
 export MAS_WORKSPACE_ID="demo2ws"
 export MAS_WORKSPACE_NAME="demo2 workspace"
@@ -128,7 +213,7 @@ export SECRETS_PATH="arn:aws:secretsmanager:us-east-1:xxxxxxxxxxxx:secret"
 ### 3. Setup your gitops repository
 Git repositories are used to supply ArgoCD with both the **Helm Charts** for the MAS installation (the _source_ Git repo), as well as a collection of per-cluster/instance **configuration** files used to render those templates into Kubernetes (the _config_ Git repo).
 
-The **Helm Charts** are provided by IBM in the public [ibm-mas/gitops](https://github.com/ibm-mas/gitops) repository on github.com. It is recommended that you use this repo (and we will do so in this demonstration), but you are free to fork them into your own git repository if necessary.
+The **Helm Charts** are provided by IBM in the public [ibm-mas/gitops](https://github.com/ibm-mas/gitops) repository on github.com.
 
 For the **configuration** files you will need to setup a new git repository in your preferred provider and supply its details to the CLI via some environment variables. In your mas cli terminal session, run the following, subtituting in the values for your git repository:
 
@@ -154,10 +239,6 @@ git config --global user.email "you@example.com"
 
 
 ### 3. Bootstrap ArgoCD and create the Account Root Application
-> TODO: allow use of an existing ArgoCD? I.e. bootstrap *just* creates the account root appliction?
-> TODO: update gitops-bootstrap to allow setting of all new root application parameters
-> TODO: test gitops-bootstrap in a blank cluster (can't do this in mas-4)
-
 The `mas gitops-bootstrap` function will perform the following actions:
 - Install ArgoCD operator
 - Create ArgoCD instance
@@ -166,7 +247,7 @@ The `mas gitops-bootstrap` function will perform the following actions:
 - Enable the ArgoCD Vault plugin
 - Configure ArgoCD authentication to your application repository using personal access token
 - Patch `openshift-marketplace` and `kube-system` namespaces to allow ArgoCD to manage them
-- Add `cluster-admin` access to openshift-gitops ServiceAccount (required for managing CecurityContextContraints)
+- Add `cluster-admin` access to openshift-gitops ServiceAccount (required for managing SecurityContextContraints)
 - Create an ArgoCD project for Maximo Application Suite
 - Create the Maximo Application Suite **Account Root Application**
 
@@ -215,6 +296,7 @@ ICR_PASSWORD="xxx"
 
 mas gitops-cluster \
   --github-push \
+  --cluster-url "${CLUSTER_URL}" \
   --icr-username "${ICR_USERNAME}" \
   --icr-password "${ICR_PASSWORD}" \
   --catalog-version v8-240430-amd64 \
