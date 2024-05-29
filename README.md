@@ -70,13 +70,13 @@ The [Suite Configs](https://github.com/ibm-mas/gitops/blob/demo2/root-applicatio
 
 ### Config Git Repository Structure
 
-The _Config_ Git repository represents the "source of truth" that defines everything ArgoCD needs to install and manage MAS instances. Configuration is structured as a hierarchy; with "accounts" (e.g. dev/prod/staging) at the top, followed by "clusters", followed by "instances". 
+The _Config_ Git repository represents the "source of truth" that (along with the Charts in the _Source Git Repo_ and the secrets in the _Secrets Vault_) provides everything ArgoCD needs to install and manage MAS instances across the target clusters. Configuration is structured as a hierarchy; with "accounts" (e.g. dev/prod/staging) at the top, followed by "clusters", followed by "instances". 
 
 Each account is managed by its own ArgoCD instance containing a single **Account Root Application**. 
 
 > **Why can't a single ArgoCD instance contain more than one Account Root Application?** This is primarily due to a limitation we have inherited to be compatible with internal IBM systems where we must have everything under a single ArgoCD project. We would like to support single/multi-project configurations in the long term, but it's not a priority at the moment.
 
-The _Config_ Git repository contains a tree of `.yaml` configuration files structured as follows:
+The _Config_ Git repository contains a tree of different types of `.yaml` configuration files, structured as follows. Each `.yaml` file will cause ArgoCD to generate one (or more) application(s), which in turn render Helm charts into the target cluster.
 
 ```
 ├── <ACCOUNT_ID>
@@ -103,26 +103,6 @@ The _Config_ Git repository contains a tree of `.yaml` configuration files struc
 │       └── redhat-cert-manager.yaml
 ```
 
-These `.yaml` configuration files are monitored by [Git Generators](https://argo-cd.readthedocs.io/en/stable/operator-manual/applicationset/Generators-Git/#git-generator-files) on the [Cluster Root Application Set](https://github.com/ibm-mas/gitops/blob/demo2/root-applications/ibm-mas-account-root/templates/000-cluster-appset.yaml) (installed by the **Account Root Application**), and the [MAS Instance Application Set](https://github.com/ibm-mas/gitops/blob/demo2/root-applications/ibm-mas-cluster-root/templates/099-instance-appset.yaml) (installed by the **Cluster Root Application**). The **Cluster Root Application** and **MAS Instance Root Application** Helm Charts contain templates that are conditionally enabled when the associated configuration is picked up the Application Sets. For instance, `ibm-operator-catalog.yaml` contains:
-```yaml
-ibm_operator_catalog:
-    mas_catalog_version: xxx
-    mas_catalog_image: xxx
-```
-
-When the associated Git generator on the [Cluster Root Application Set](https://github.com/ibm-mas/gitops/blob/demo2/root-applications/ibm-mas-account-root/templates/000-cluster-appset.yaml) picks up this file:
-```yaml
-- git:
-    repoURL: "{{ .Values.generator.repo_url }}"
-    revision: "{{ .Values.generator.revision }}"
-    files:
-    - path: "{{ .Values.account.id }}/*/ibm-operator-catalog.yaml"
-```
-It will be added to the Helm values used to render the [Cluster Root Application Helm Chart](https://github.com/ibm-mas/gitops/tree/demo2/root-applications/ibm-mas-cluster-root). This will result in condition at the top of the [000-ibm-operator-catalog-app](https://github.com/ibm-mas/gitops/blob/demo2/root-applications/ibm-mas-cluster-root/templates/000-ibm-operator-catalog-app.yaml) evaluating to true:
-```
-{{- if not (empty .Values.ibm_operator_catalog) }}
-```
-This will result in ArgoCD installing the IBM Operator Catalog Application, which in turn will deploy the resources in the [000-ibm-operator-catalog Helm Chart](https://github.com/ibm-mas/gitops/blob/demo2cluster-applications/000-ibm-operator-catalog) to the target cluster.
 
 Here is the structure of an example _Config_ Git repo containing configuration for three accounts (`dev`, `staging`, `production`) with a number of clusters and MAS instances. For brevity, the actual `.yaml` files are not shown here.
 ```
@@ -155,7 +135,7 @@ Here is the structure of an example _Config_ Git repo containing configuration f
             └── *.yaml
 ```
 
-## Demontration
+## Demonstration
 
 The following is a step-by-step demonstration that you can work through to install MAS on AWS via GitOps using the MAS CLI. Please note:
 - You do not *need* to use the MAS CLI to use our ArgoCD applications, but at this stage of development there is no documentation in place for this. 
@@ -970,3 +950,27 @@ Cert deprovisioning steps will hang unless using ArgoCD 2.11.0 or later. If on A
 Only supports ROSA
 Only supports on-cluster ArgoCD
 Only supports Manage
+
+
+
+# Removed (for now)
+These `.yaml` configuration files are monitored by [Git Generators](https://argo-cd.readthedocs.io/en/stable/operator-manual/applicationset/Generators-Git/#git-generator-files) on the [Cluster Root Application Set](https://github.com/ibm-mas/gitops/blob/demo2/root-applications/ibm-mas-account-root/templates/000-cluster-appset.yaml) (installed by the **Account Root Application**), and the [MAS Instance Application Set](https://github.com/ibm-mas/gitops/blob/demo2/root-applications/ibm-mas-cluster-root/templates/099-instance-appset.yaml) (installed by the **Cluster Root Application**). The **Cluster Root Application** and **MAS Instance Root Application** Helm Charts contain templates that are conditionally enabled when the associated configuration is picked up the Application Sets. For instance, `ibm-operator-catalog.yaml` contains:
+```yaml
+ibm_operator_catalog:
+    mas_catalog_version: xxx
+    mas_catalog_image: xxx
+```
+
+When the associated Git generator on the [Cluster Root Application Set](https://github.com/ibm-mas/gitops/blob/demo2/root-applications/ibm-mas-account-root/templates/000-cluster-appset.yaml) picks up this file:
+```yaml
+- git:
+    repoURL: "{{ .Values.generator.repo_url }}"
+    revision: "{{ .Values.generator.revision }}"
+    files:
+    - path: "{{ .Values.account.id }}/*/ibm-operator-catalog.yaml"
+```
+It will be added to the Helm values used to render the [Cluster Root Application Helm Chart](https://github.com/ibm-mas/gitops/tree/demo2/root-applications/ibm-mas-cluster-root). This will result in condition at the top of the [000-ibm-operator-catalog-app](https://github.com/ibm-mas/gitops/blob/demo2/root-applications/ibm-mas-cluster-root/templates/000-ibm-operator-catalog-app.yaml) evaluating to true:
+```
+{{- if not (empty .Values.ibm_operator_catalog) }}
+```
+This will result in ArgoCD installing the IBM Operator Catalog Application, which in turn will deploy the resources in the [000-ibm-operator-catalog Helm Chart](https://github.com/ibm-mas/gitops/blob/demo2cluster-applications/000-ibm-operator-catalog) to the target cluster.
