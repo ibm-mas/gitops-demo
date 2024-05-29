@@ -141,6 +141,17 @@ The following is a step-by-step demonstration that you can work through to insta
 - It is possible for ArgoCD to run on one cluster, managing MAS instances across multiple other clusters. In the interests of simplicity, in this demonstration we will restrict the deployment to a single MAS Instance running in the same cluster as ArgoCD.
 - For brevity, we only install the **Manage** MAS application here, but all of the MAS applications are supported.
 
+The process boils down to thw following steps:
+  - Provision a ROSA cluster
+  - Configure AWS Secrets Manager
+  - Creating a Git repository to hold your configuration files
+  - Install and configure ArgoCD
+  - Create the  **Account Root Application**
+  - Install Mongo DB on the cluster
+  - Create secrets in Secrets Manager and push config files to your Config Git repository
+
+The final step is achieved here using various `gitops` functions provided by the MAS CLI. These have been structured in such a way primarily to suit IBM Internal processes. We would like to provide a more streamlined and generic CLI/utility to achieve this in future iterations.
+
 
 ### Setup Secrets Manager
 Set up [AWS Secrets Manager](https://us-east-2.console.aws.amazon.com/secretsmanager/listsecrets?region=us-east-2), and [create an access key](https://us-east-1.console.aws.amazon.com/iam/home#/security_credentials?section=IAM_credentials)
