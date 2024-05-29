@@ -30,42 +30,39 @@ The **Cluster Root Application** [Helm Chart](https://github.com/ibm-mas/gitops/
 
 The **Cluster Root Application** [Helm Chart](https://github.com/ibm-mas/gitops/tree/demo2/root-applications/ibm-mas-cluster-root) also installs the **[MAS Instance Root Application Set](https://github.com/ibm-mas/gitops/blob/demo2/root-applications/ibm-mas-cluster-root/templates/099-instance-appset.yaml)**. This generates a set of **MAS Instance Root Applications** based on the configuration in the _config_ Git repo.  
 
-The **MAS Instance Root Application** [Helm Chart](https://github.com/ibm-mas/gitops/tree/demo2/root-applications/ibm-mas-instance-root) contains templates that generate ArgoCD Applications that install and configure some instance-level dependencies (e.g. SLS, DB2 Databases), MAS Core and various (MAS) applications (e.g. Manage, Monitor, etc).
-
-Some of these templates generate a single ArgoCD Application that renders a specific Helm chart into the target cluster:
+The **MAS Instance Root Application** [Helm Chart](https://github.com/ibm-mas/gitops/tree/demo2/root-applications/ibm-mas-instance-root) contains templates for generating ArgoCD Applications that install and configure some instance-level dependencies (e.g. SLS, DB2 Databases), MAS Core and various (MAS) applications (e.g. Manage, Monitor, etc) in the appropriate namespace on the target cluster:
  
 - [CP4D](https://github.com/ibm-mas/gitops/blob/demo2/root-applications/ibm-mas-instance-root/templates/080-ibm-cp4d.yaml) ([Helm Chart](https://github.com/ibm-mas/gitops/blob/demo2/instance-applications/080-ibm-cp4d))
 - [Suite License Service](https://github.com/ibm-mas/gitops/blob/demo2/root-applications/ibm-mas-instance-root/templates/100-ibm-sls-app.yaml) ([Helm Chart](https://github.com/ibm-mas/gitops/blob/demo2/instance-applications/100-ibm-sls))
 - [MAS Suite](https://github.com/ibm-mas/gitops/blob/demo2/root-applications/ibm-mas-instance-root/templates/130-ibm-mas-suite-app.yaml) ([Helm Chart](https://github.com/ibm-mas/gitops/blob/demo2/instance-applications/130-ibm-mas-suite))
-
-Some of these templates generate a single ArgoCD Application that renders a generic Suite App Install [Helm Chart](https://github.com/ibm-mas/gitops/blob/demo2/instance-applications/500-540-ibm-mas-suite-app-install) on the target cluster for installing MAS Applications:
-- [MAS App Assist Install](https://github.com/ibm-mas/gitops/blob/demo2/root-applications/ibm-mas-instance-root/templates/500-ibm-mas-masapp-assist-install.yaml)
-- [MAS App IoT Install](https://github.com/ibm-mas/gitops/blob/demo2/root-applications/ibm-mas-instance-root/templates/500-ibm-mas-masapp-iot-install.yaml)
-- [MAS App Manage Install](https://github.com/ibm-mas/gitops/blob/demo2/root-applications/ibm-mas-instance-root/templates/500-ibm-mas-masapp-manage-install.yaml)
-- [MAS App VisualInspection Install](https://github.com/ibm-mas/gitops/blob/demo2/root-applications/ibm-mas-instance-root/templates/500-ibm-mas-masapp-visualinspection-install.yaml)
-- [MAS App Health Install](https://github.com/ibm-mas/gitops/blob/demo2/root-applications/ibm-mas-instance-root/templates/520-ibm-mas-masapp-health-install.yaml)
-- [MAS App Monitor Install](https://github.com/ibm-mas/gitops/blob/demo2/root-applications/ibm-mas-instance-root/templates/520-ibm-mas-masapp-monitor-install.yaml)
-- [MAS App Optimizer Install](https://github.com/ibm-mas/gitops/blob/demo2/root-applications/ibm-mas-instance-root/templates/520-ibm-mas-masapp-optimizer-install.yaml)
-- [MAS App Predict Install](https://github.com/ibm-mas/gitops/blob/demo2/root-applications/ibm-mas-instance-root/templates/540-ibm-mas-masapp-predict-install.yaml)
+- [MAS App Assist Install](https://github.com/ibm-mas/gitops/blob/demo2/root-applications/ibm-mas-instance-root/templates/500-ibm-mas-masapp-assist-install.yaml) ([Helm Chart](https://github.com/ibm-mas/gitops/blob/demo2/instance-applications/500-540-ibm-mas-suite-app-install))
+- [MAS App IoT Install](https://github.com/ibm-mas/gitops/blob/demo2/root-applications/ibm-mas-instance-root/templates/500-ibm-mas-masapp-iot-install.yaml) ([Helm Chart](https://github.com/ibm-mas/gitops/blob/demo2/instance-applications/500-540-ibm-mas-suite-app-install))
+- [MAS App Manage Install](https://github.com/ibm-mas/gitops/blob/demo2/root-applications/ibm-mas-instance-root/templates/500-ibm-mas-masapp-manage-install.yaml) ([Helm Chart](https://github.com/ibm-mas/gitops/blob/demo2/instance-applications/500-540-ibm-mas-suite-app-install))
+- [MAS App VisualInspection Install](https://github.com/ibm-mas/gitops/blob/demo2/root-applications/ibm-mas-instance-root/templates/500-ibm-mas-masapp-visualinspection-install.yaml) ([Helm Chart](https://github.com/ibm-mas/gitops/blob/demo2/instance-applications/500-540-ibm-mas-suite-app-install))
+- [MAS App Health Install](https://github.com/ibm-mas/gitops/blob/demo2/root-applications/ibm-mas-instance-root/templates/520-ibm-mas-masapp-health-install.yaml) ([Helm Chart](https://github.com/ibm-mas/gitops/blob/demo2/instance-applications/500-540-ibm-mas-suite-app-install))
+- [MAS App Monitor Install](https://github.com/ibm-mas/gitops/blob/demo2/root-applications/ibm-mas-instance-root/templates/520-ibm-mas-masapp-monitor-install.yaml) ([Helm Chart](https://github.com/ibm-mas/gitops/blob/demo2/instance-applications/500-540-ibm-mas-suite-app-install))
+- [MAS App Optimizer Install](https://github.com/ibm-mas/gitops/blob/demo2/root-applications/ibm-mas-instance-root/templates/520-ibm-mas-masapp-optimizer-install.yaml) ([Helm Chart](https://github.com/ibm-mas/gitops/blob/demo2/instance-applications/500-540-ibm-mas-suite-app-install))
+- [MAS App Predict Install](https://github.com/ibm-mas/gitops/blob/demo2/root-applications/ibm-mas-instance-root/templates/540-ibm-mas-masapp-predict-install.yaml) ([Helm Chart](https://github.com/ibm-mas/gitops/blob/demo2/instance-applications/500-540-ibm-mas-suite-app-install))
 
 
-Some of the templates in the chart are capable of generating multiple Applications that render a Helm chart on the target cluster. This is used when there may be one or more instances of the particular resources being configured and will vary between MAS instances - for instance DB2 databases, suite configs, and suite/application workspaces:
+There are some special templates in the **MAS Instance Root Application** [Helm Chart](https://github.com/ibm-mas/gitops/tree/demo2/root-applications/ibm-mas-instance-root) that are capable of generating multiple Applications; necessary when there may be one or more instances of that type of resource, which will vary between MAS instances - for instance DB2 databases, suite configs, and suite/application workspaces:
 
 - [DB2 Databases](https://github.com/ibm-mas/gitops/blob/demo2/root-applications/ibm-mas-instance-root/templates/120-db2-databases-app.yaml) ([Helm Chart](https://github.com/ibm-mas/gitops/blob/demo2/instance-applications/120-ibm-db2u-database))
 - [MAS Workspaces](https://github.com/ibm-mas/gitops/blob/demo2/root-applications/ibm-mas-instance-root/templates/200-ibm-mas-workspaces.yaml) ([Helm Chart](https://github.com/ibm-mas/gitops/blob/demo2/instance-applications/220-ibm-mas-workspace))
 - [MAS App Configs](https://github.com/ibm-mas/gitops/blob/demo2/root-applications/ibm-mas-instance-root/templates/510-550-ibm-mas-masapp-configs) ([Helm Chart](https://github.com/ibm-mas/gitops/blob/demo2/instance-applications/510-550-ibm-mas-suite-app-config))
+- [Suite Configs](https://github.com/ibm-mas/gitops/blob/demo2/root-applications/ibm-mas-instance-root/templates/130-ibm-mas-suite-configs-app.yaml)
+  - This application is responsible for installing various types of suite configuration types (Mongo, BAS, SMTP, etc) at various scopes (system, app, ws, wsapp). The Helm Chart it uses is chosen dynanmically based on the configuration type:
+    - [JDBC Config](https://github.com/ibm-mas/gitops/blob/demo2/root-applications/ibm-mas-instance-root/templates/130-ibm-db2u-jdbc-config)
+    - [Kafka Config](https://github.com/ibm-mas/gitops/blob/demo2/root-applications/ibm-mas-instance-root/templates/130-ibm-kafka-config)
+    - [BAS Config](https://github.com/ibm-mas/gitops/blob/demo2/root-applications/ibm-mas-instance-root/templates/130-ibm-mas-bas-config)
+    - [IDP Config](https://github.com/ibm-mas/gitops/blob/demo2/root-applications/ibm-mas-instance-root/templates/130-ibm-mas-idp-config)
+    - [Mongo Config](https://github.com/ibm-mas/gitops/blob/demo2/root-applications/ibm-mas-instance-root/templates/130-ibm-mas-mongo-config)
+    - [SLS Config](https://github.com/ibm-mas/gitops/blob/demo2/root-applications/ibm-mas-instance-root/templates/130-ibm-mas-sls-config)
+    - [SMTP Config](https://github.com/ibm-mas/gitops/blob/demo2/root-applications/ibm-mas-instance-root/templates/130-ibm-mas-smtp-config)
+    - [COS Config](https://github.com/ibm-mas/gitops/blob/demo2/root-applications/ibm-mas-instance-root/templates/130-ibm-objectstorage-config)
+
 
 >  **Why not use Application Sets here?** We encountered some limitations when using Application Sets for this purpose. For instance, Applications generated by Application Sets are children of the *Application Set*, and are not direct children of the parent Application. This means that they do not participate in the [ArgoCD syncwave](https://argo-cd.readthedocs.io/en/stable/user-guide/sync-waves/) of the parent Application, so we would have no way of ensuring that resources would be configured in the correct order. Instead, we make use of the Helm `range` control structure in the Helm template to dynamically generate applications that are direct children of the parent application. 
-
-The [Suite Configs](https://github.com/ibm-mas/gitops/blob/demo2/root-applications/ibm-mas-instance-root/templates/130-ibm-mas-suite-configs-app.yaml) template is a special case. Like the others, this is capable of generating many ArgoCD Applications. The difference is that the specific Helm chart used is dynamic. It is responsible for setting up various suite configuration types (Mongo, BAS, SMTP, etc) at various scopes (system, app, ws, wsapp). Depending on the configuration type, it installs one of the following Helm Charts on the target cluster:
-- [JDBC Config](https://github.com/ibm-mas/gitops/blob/demo2/root-applications/ibm-mas-instance-root/templates/130-ibm-db2u-jdbc-config)
-- [Kafka Config](https://github.com/ibm-mas/gitops/blob/demo2/root-applications/ibm-mas-instance-root/templates/130-ibm-kafka-config)
-- [BAS Config](https://github.com/ibm-mas/gitops/blob/demo2/root-applications/ibm-mas-instance-root/templates/130-ibm-mas-bas-config)
-- [IDP Config](https://github.com/ibm-mas/gitops/blob/demo2/root-applications/ibm-mas-instance-root/templates/130-ibm-mas-idp-config)
-- [Mongo Config](https://github.com/ibm-mas/gitops/blob/demo2/root-applications/ibm-mas-instance-root/templates/130-ibm-mas-mongo-config)
-- [SLS Config](https://github.com/ibm-mas/gitops/blob/demo2/root-applications/ibm-mas-instance-root/templates/130-ibm-mas-sls-config)
-- [SMTP Config](https://github.com/ibm-mas/gitops/blob/demo2/root-applications/ibm-mas-instance-root/templates/130-ibm-mas-smtp-config)
-- [COS Config](https://github.com/ibm-mas/gitops/blob/demo2/root-applications/ibm-mas-instance-root/templates/130-ibm-objectstorage-config)
 
 
 ### Config Git Repository Structure
@@ -74,9 +71,9 @@ The _Config_ Git repository represents the "source of truth" that (along with th
 
 Each account is managed by its own ArgoCD instance containing a single **Account Root Application**. 
 
-> **Why can't a single ArgoCD instance contain more than one Account Root Application?** This is primarily due to a limitation we have inherited to be compatible with internal IBM systems where we must have everything under a single ArgoCD project. We would like to support single/multi-project configurations in the long term, but it's not a priority at the moment.
+> **Why can't a single ArgoCD instance contain more than one Account Root Application?** This is primarily due to a limitation we have inherited to be compatible with internal IBM systems where we must have everything under a single ArgoCD project. This limitation could be addressed by adding support for multi-project configurations, assigning each Account Root Application its own project in ArgoCD. This is something we'd like to do in the long term but it's not a priority at the moment.
 
-The _Config_ Git repository contains a tree of different types of `.yaml` configuration files, structured as follows. Each `.yaml` file will cause ArgoCD to generate one (or more) application(s), which in turn render Helm charts into the target cluster.
+The _Config_ Git repository contains a tree of different types of `.yaml` configuration files. Each `.yaml` file will cause ArgoCD to generate one (or more) application(s), which in turn render Helm charts into the target cluster.
 
 ```
 ├── <ACCOUNT_ID>
@@ -149,7 +146,7 @@ The following is a step-by-step demonstration that you can work through to insta
 Set up [AWS Secrets Manager](https://us-east-2.console.aws.amazon.com/secretsmanager/listsecrets?region=us-east-2), and [create an access key](https://us-east-1.console.aws.amazon.com/iam/home#/security_credentials?section=IAM_credentials)
 
 
-### Start the MAS CLI image and mount demo files
+### Start the MAS CLI image and mount the demo files
 
 If you haven't already, clone this repository to your local machine. This is so we can mount some included configuration files into the MAS CLI container for use later.
 ```bash
