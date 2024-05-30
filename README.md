@@ -1,7 +1,9 @@
 # Maximo Application Suite GitOps Demonstration
 
-The following is a step-by-step demonstration that you can work through to install MAS on AWS via GitOps using the Helm Charts in [ibm-mas/gitops](https://github.com/ibm-mas/gitops) and the MAS CLI. Please note:
-- You do not *need* to use the MAS CLI to use our ArgoCD applications, but at this stage of development there is no documentation in place for this. 
+The following is a step-by-step demonstration that you can work through to install MAS on AWS via GitOps using the Helm Charts in [ibm-mas/gitops](https://github.com/ibm-mas/gitops) and the MAS CLI. We recommend that you review the [ibm-mas-gitops README](https://github.com/ibm-mas/gitops) before following the steps in this demonstration. 
+
+Please note:
+- You do not *need* to use the MAS CLI to use our Helm Charts, but at this stage of development there is no documentation in place for this. 
 - It is possible to use other cloud providers, but this has not been tested sufficiently for demonstration yet.
 - It is possible for ArgoCD to run on one cluster, managing MAS instances across multiple other clusters. In the interests of simplicity, in this demonstration we will restrict the deployment to a single MAS Instance running in the same cluster as ArgoCD.
 - For brevity, we only install the **Manage** MAS application here, but all of the MAS applications are supported.
@@ -17,9 +19,11 @@ The process boils down to the following steps:
 
 The final step is achieved here using various `gitops` functions provided by the MAS CLI. These have been structured primarily to suit IBM Internal processes. We would like to provide a more streamlined and generic CLI/utility to achieve this in future iterations.
 
+### Prerequisites
 
-### Setup Secrets Manager
-Set up [AWS Secrets Manager](https://us-east-2.console.aws.amazon.com/secretsmanager/listsecrets?region=us-east-2), and [create an access key](https://us-east-1.console.aws.amazon.com/iam/home#/security_credentials?section=IAM_credentials)
+ - An AWS Account with [ROSA](https://console.aws.amazon.com/rosa/home) support enabled.
+ - An access key and secret access key for calling AWS Secrets manager (configure [here](https://us-east-1.console.aws.amazon.com/iam/home#/security_credentials?section=IAM_credentials)).
+ - Docker (or equivalent) installed on your local machine (for running the MAS CLI image)
 
 
 ### Start the MAS CLI image and mount the demo files
@@ -32,18 +36,12 @@ git clone git@github.com:ibm-mas/gitops-demo --branch 002 ${GITOPS_DEMO_PATH}
 
 Now run the version of the CLI image used in this demonstration, mounting the files from the gitops-demo repo as follows:
 
+> TODO: update cli image version
 ```bash
-docker run -v $GITOPS_DEMO_PATH/files:/demo-files -ti --pull always quay.io/ibmmas/cli:8.1.0-pre.demo2
+docker run -v $GITOPS_DEMO_PATH/files:/demo-files -ti --pull always quay.io/ibmmas/cli:9.0.0-pre.gitops
 ```
 
-### Provision a ROSA Cluster
-> TODO: update this
-```bash
-export IBMCLOUD_APIKEY=xxx
-mas provision-roks -r mas-development -c gitopsdemo -v 4.12_openshift --worker-count 3 --worker-flavor b3c.16x64.300gb --worker-zone lon02 --no-confirm
-```
 
-When this completed you will be logged into the OCP cluster ready to continue.
 
 ### Setup common environment variables
 
@@ -58,7 +56,7 @@ export ACCOUNT_ID="dev"
 # This will determine second-level folder in your Git Config repo.
 # It will also be included in the names of the Applications that ArgoCD will generate
 # Must be less than 15 characters (see "Naming Length Restrictions" below)
-export CLUSTER_ID="useast1a"
+export CLUSTER_ID="masdemo1"
 
 # This will determine the OCP cluster that ArgoCD targets.
 # In this tutorial, we are deploying a single MAS instance in the same cluster as ArgoCD.
@@ -70,8 +68,8 @@ export CLUSTER_URL="https://kubernetes.default.svc"
 export MAS_INSTANCE_ID="inst1"
 
 # This will determine the name of the MAS Suite and Application workspace in your deployment
-export MAS_WORKSPACE_ID="demo2ws"
-export MAS_WORKSPACE_NAME="demo2 workspace"
+export MAS_WORKSPACE_ID="inst1ws1"
+export MAS_WORKSPACE_NAME="Instance 1 Workspace 1"
 
 # These will be used to configure the AVP plugin in ArgoCD so it is capable of retrieving secrets from AWS Secrets Manager
 # They will also be used to configure various secrets automatically by some of the CLI functions we are about to call
@@ -89,25 +87,29 @@ export SECRETS_PATH="arn:aws:secretsmanager:${SM_AWS_REGION}:${SM_AWS_ACCOUNT_ID
 > - **Cluster ID**: 15 characters. Must be unique within an account.
 > - **MAS instance ID**: 15 characters. Must be unique within a cluster.
 
-### Setup your gitops repository
-Git repositories are used to supply ArgoCD with both the **Helm Charts** for the MAS installation (the _source_ Git repo), as well as a collection of per-cluster/instance **configuration** files used to render those templates into Kubernetes (the _config_ Git repo).
+### Provision a ROSA Cluster
+> TODO: test this
+```bash
+export ROSA_TOKEN=xxx
+mas gitops-rosa -c "${CLUSTER_ID}" --ocp-version 4.14.18 --rosa-compute-machine-type m5.4xlarge --rosa-compute-nodes 3
+```
 
-The **Helm Charts** are provided by IBM in the public [ibm-mas/gitops](https://github.com/ibm-mas/gitops) repository on github.com.
+Once this has completed you will be logged into the OCP cluster ready to continue.
 
-> It is possible to source Helm charts from elsewhere (i.e. your own fork of ibm-mas/gitops) but this is not covered in this demonstration.
+### Setup your Config Git Repo
 
-For the **configuration** files you will need to setup a new git repository in your preferred provider and supply its details to the CLI via some environment variables. In your mas cli terminal session, run the following, subtituting in the values for your git repository:
+You will need to set up your own **Config Git Repo** in your preferred provider and supply its details to the CLI via some environment variables. This is where ArgoCD will look for configuration files that define your MAS instance, and it is where the CLI will push configuration files to. Once you have setup the repository, in your MAS cli terminal session, run the following, replacing the values as appropriate.
 
 ```bash
 export GITOPS_VERSION="master"
 export GITHUB_HOST="github.com"
-export GITHUB_ORG="ibm-mas"
-export GITHUB_REPO="gitops-demo"
+export GITHUB_ORG="my-org"
+export GITHUB_REPO="my-mas-gitops-repo"
 export GIT_BRANCH="002"
 export GIT_SSH="false"
 ```
 
-Create a personal access token in your git provider, ensuring that it has sufficient permissions to read and write from your git repository. This will be used to grant ArgoCD access to your Git repository, and will be used by the MAS CLI commands to push configuration files. Set it in your environment as follows:
+Create a personal access token in your git provider, ensuring that it has sufficient permissions to read from and write to your **Config Git Repo**. Set it in your MAS cli terminal session environment as follows:
 ```bash
 export GITHUB_PAT="xxx"
 ```
@@ -116,8 +118,6 @@ And configure git:
 ```bash
 git config --global user.email "you@example.com"
 ```
-
-
 
 ### Bootstrap ArgoCD and create the Account Root Application
 The `mas gitops-bootstrap` function will perform the following actions:
@@ -133,20 +133,21 @@ The `mas gitops-bootstrap` function will perform the following actions:
 - Create the Maximo Application Suite **Account Root Application**
 
 ```bash
-
-
 mas gitops-bootstrap \
   --account-id "${ACCOUNT_ID}" \
   --app-revision demo2 \
   --sm-aws-secret-region "$REGION_ID" \
-  --sm-aws-secret-key $SECRET_KEY \
-  --sm-aws-access-key $ACCESS_KEY \
-  --github-url https://github.com/ibm-mas/gitops-demo \
-  --github-revision 001 \
+  --sm-aws-secret-key $SM_AWS_SECRET_ACCESS_KEY \
+  --sm-aws-access-key $SM_AWS_ACCESS_KEY_ID \
+  --github-url https://${GITHUB_HOST}/${GITHUB_ORG}/${GITHUB_REPO} \
+  --github-revision ${GIT_BRANCH} \
   --github-pat "${GITHUB_PAT}"
 ```
 
-You will end up with the root application and a single ApplicationSet deployed in ArgoCD as below:
+You should now be able to access the ArgoCD Web UI:
+> TODO: steps to access ArgoCD Web UI
+
+You should see the root application and a single ApplicationSet deployed in ArgoCD as below:
 > TODO: update
 ![ArgoCD post-bootstrap](docs/img/01-bootstrap1.png)
 
@@ -461,7 +462,7 @@ mas gitops-db2u-database \
 ```
 
 
-### 11. Configure MAS with Manage DB2 Database
+### Configure MAS with Manage DB2 Database
 
 ```bash
 mas gitops-mas-config \
@@ -525,15 +526,6 @@ If you change any values in secrets manager, you must hard-refresh the appropria
 
 Cert deprovisioning steps will hang unless using ArgoCD 2.11.0 or later. If on ArgoCD <2.11, ensure the following steps are performed manually to avoid the problem:
 > TODO
-
-
-
-
-# Current Limitations
-
-Only supports ROSA
-Only supports on-cluster ArgoCD
-Only supports Manage
 
 
 
