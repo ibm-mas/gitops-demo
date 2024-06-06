@@ -24,6 +24,16 @@ The final step is achieved here using various `gitops` functions provided by the
  - An AWS Account with [ROSA](https://console.aws.amazon.com/rosa/home) support enabled.
  - An access key and secret access key for calling AWS Secrets manager (configure [here](https://us-east-1.console.aws.amazon.com/iam/home#/security_credentials?section=IAM_credentials)).
  - Docker (or equivalent) installed on your local machine (for running the MAS CLI image)
+ - An IBM Entitlement Key. Access [Container Software Library](https://myibm.ibm.com/products-services/containerlibrary) using your IBMId to obtain your entitlement key.
+ - A MAS License File. Access [IBM License Key Center](https://licensing.subscribenet.com/control/ibmr/login), on the **Get Keys** menu select **IBM AppPoint Suites**. Select `IBM MAXIMO APPLICATION SUITE AppPOINT LIC` and on the next page fill in the information as below:
+    
+    | Field            | Content                                                                       |
+    | ---------------- | ----------------------------------------------------------------------------- |
+    | Number of Keys   | How many AppPoints to assign to the license file                              |
+    | Host ID Type     | Set to **Ethernet Address**                                                   |
+    | Host ID          | Enter any 12 digit hexadecimal string                                         |
+    | Hostname         | Set to the hostname of your OCP instance, but this can be any value really.   |
+    | Port             | Set to **27000**                                                              |
 
 
 ### Start the MAS CLI image and mount the demo files
@@ -40,8 +50,6 @@ Now run the version of the CLI image used in this demonstration, mounting the fi
 ```bash
 docker run -v $GITOPS_DEMO_PATH/files:/demo-files -ti --pull always quay.io/ibmmas/cli:9.0.0-pre.gitops
 ```
-
-
 
 ### Setup common environment variables
 
@@ -71,15 +79,23 @@ export MAS_INSTANCE_ID="inst1"
 export MAS_WORKSPACE_ID="inst1ws1"
 export MAS_WORKSPACE_NAME="Instance 1 Workspace 1"
 
+# Details for access your AWS account and linked Redhat account.
+# These will be used to provision the ROSA cluster and create a Document DB instance
+export AWS_ACCESS_KEY_ID="xxx"
+export AWS_SECRET_ACCESS_KEY="xxx"
+export AWS_REGION="us-east-1"
+export ROSA_TOKEN=xxx
+
 # These will be used to configure the AVP plugin in ArgoCD so it is capable of retrieving secrets from AWS Secrets Manager
 # They will also be used to configure various secrets automatically by some of the CLI functions we are about to call
-export SM_AWS_ACCOUNT_ID="xxxxx"
-export SM_AWS_REGION="us-east-1"
-export SM_AWS_SECRET_ACCESS_KEY="xxx"
-export SM_AWS_ACCESS_KEY_ID="xxx"
+# These can be the same as the AWS details above
+export SM_AWS_REGION="${AWS_REGION}"
+export SM_AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY}"
+export SM_AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID}"
 
 # This will be substituted into generated configuration .yaml files to reference secrets
 # and allow them to be resolved by the AVP plugin when rendering Helm Charts
+SM_AWS_ACCOUNT_ID="xxxxx"
 export SECRETS_PATH="arn:aws:secretsmanager:${SM_AWS_REGION}:${SM_AWS_ACCOUNT_ID}:secret"
 
 
@@ -95,7 +111,7 @@ export GITOPS_VERSION="<deprecated>"
 
 ### Provision a ROSA Cluster
 ```bash
-export ROSA_TOKEN=xxx
+
 mas gitops-rosa -c "${CLUSTER_ID}" --ocp-version 4.14.18 --rosa-compute-machine-type m5.4xlarge --rosa-compute-nodes 3
 ```
 
@@ -263,100 +279,61 @@ It should take less than 10 minutes for this application to reach Healthy/Synced
 
 ### Setup Mongo
 
-Use ansible-devops role to install an on-cluster Mongo
 
-> mas gitops-mongo --account-id 'fyre-dev' --cluster-id 'testing' --mongo-provider 'community' --mongodb-storage-class 'ocs-storagecluster-ceph-rbd' --mongodb-namespace 'mongoce2' 
+MAS and its application depend on MongoDB. In this demonstration, we will make use of AWS DocumentDB. The following commands will provision a 3 node `db.t3.medium` DocDB instance in your AWS account. A new secret (`${ACCOUNT_ID}/${CLUSTER_ID}/mongo`) will be added to AWS Secrets Manager holding all the information necessary to connect, which will be used by the IBM Suite License Service and any instances of IBM Maximo Application Suite installed on this cluster.
 
-
-### Generate configuration for MongoDb
-> TODO: Could branch these instructions for users wishing to make use of docdb 
-> (i.e. `--mongo-provider aws`).
-
-> TODO: what is the cluster-level mongo secret actually used for when mongo-provider=yaml?
-> it might be that we only need the user to provide instance-level mongo secret in this demo
->   used by gitops-suite (fetches secret and uses it to update the instance-level secret)
->     we could change this to just pass in mongo yaml and username/password to the suite
-
-> TODO: make it clear that cluster admin mongo creds should be provided here
-
-In this example we are going to be using an off-cluster MongoDB instance.  First, create a configuration file in the following format containing the details required to connect to your MongoDb instance:
-```yaml
-config:
-  configDb: admin
-  authMechanism: DEFAULT
-  retryWrites: true
-  hosts:
-    - host: host1
-      port: 32500
-    - host: host2
-      port: 32500
-    - host: host3
-      port: 32500
-certificates:
-  - alias: ca
-    crt: |
-      -----BEGIN CERTIFICATE-----
-      <certificate body>
-      -----END CERTIFICATE-----
-```
-
-Running `mas gitops-mongo` will now generate a new secret (`${ACCOUNT_ID}/${CLUSTER_ID}/mongo`) in AWS Secrets Manager holding all the information necessary to connect, which will be used by the IBM Suite License Service and any instances of IBM Maximo Application Suite installed on this cluster.
+> It is possible to use other MongoDB providers with MAS Gitops, but this is not covered in this demonstration.
 
 ```bash
-MONGO_INFO_YAML_PATH="xxx"
 
-MONGO_USERNAME="xxx"
-MONGO_PASSWORD="xxx"
+# First, get the name of the VPC associated with your ROSA cluster
+VPC_NAME="$(rosa describe cluster --cluster=${CLUSTER_ID} -oyaml | /usr/bin/yq .infra_id)-vpc"
+
+# Use the VPC_NAME this to get its ID
+export VPC_ID=$(aws ec2 describe-vpcs --filters '[{"Name": "tag:Name", "Values": ["'${VPC_NAME}'"]}]' --output yaml | yq -r '.Vpcs[].VpcId')
+
+# Associate a new CIDR block with the VPC. We will use this to assign IP addresses to DocDB.
+aws ec2 associate-vpc-cidr-block \
+--vpc-id $VPC_ID \
+--cidr-block 10.1.0.0/23
 
 mas gitops-mongo \
-  --mongo-provider yaml \
-  --yaml-file $MONGO_INFO_YAML_PATH \
-  --mongo-username "${MONGO_USERNAME}" \
-  --mongo-password "${MONGO_PASSWORD}"
-```
-
-### Configure MongoDb Account for Maximo Application Suite Core Platform
-> TODO: could look at automating this step by adding support for "normal" Mongo to
-> instance-applications/010-ibm-sync-jobs/templates/00-aws-docdb-add-user_Job.yaml hook
-```bash
-
-> TODO: make it clear that a separate user should be setup in Mongo for the MAS instance
-> Or, just advise to use the cluster admin creds configured above?
-
-MONGO_INSTANCE_USERNAME="xxx"
-MONGO_INSTANCE_PASSWORD="xxx"
-
-aws configure set default.region ${SM_AWS_REGION}
-aws configure set aws_access_key_id ${SM_AWS_ACCESS_KEY_ID}
-aws configure set aws_secret_access_key ${SM_AWS_SECRET_ACCESS_KEY}
-aws secretsmanager create-secret --name "${ACCOUNT_ID}/${CLUSTER_ID}/${MAS_INSTANCE_ID}/mongo" \
-  --secret-string '{"username": "'${MONGO_INSTANCE_USERNAME}'", "password": "'${MONGO_INSTANCE_PASSWORD}'"}'
+  --mongo-provider "aws" \
+  --aws-vpc-id "${VPC_ID}" \
+  --aws-docdb-cluster-name "docdb-${CLUSTER_ID}" \
+  --aws-docdb-ingress-cidr "10.0.0.0/16"  \
+  --aws-docdb-egress-cidr "10.0.0.0/16" \
+  --aws-docdb-cidr-az1 "10.1.0.0/27" \
+  --aws-docdb-cidr-az2 "10.1.0.32/27" \
+  --aws-docdb-cidr-az3 "10.1.0.64/27" \
+  --aws-docdb-instance-identifier-prefix "docdb-${CLUSTER_ID}" \
+  --aws-docdb-instance-number 3 \
+  --aws-docdb-engine-version "5.0.0"
 ```
 
 ### Configure License File for Maximo Application Suite Core Platform
+
+In a new terminal session, run the following command to copy your MAS License file into the MAS CLI container:
+
 ```bash
+# The path to your MAS license file (.lic extension)
 LICENSE_FILE_PATH="xxx"
 
-mas gitops-license \
-  --license-file "${LICENSE_FILE_PATH}"
+# You can find this by running the command: docker ps
+CLI_CONTAINER_ID="xxx"
+
+docker cp "${LICENSE_FILE_PATH}" "${CLI_CONTAINER_ID}:/mascli/license.lic"
 ```
 
-This will create another new entry to Secret Manager: `${ACCOUNT_ID}/${CLUSTER_ID}/${MAS_INSTANCE_ID}/license`.  We should now have 8 (TODO: 7?) secrets in total, as below:
+Now go back to your MAS CLI terminal session, and run the following:
 
 ```bash
-aws configure set default.region ${SM_AWS_REGION}
-aws configure set aws_access_key_id ${SM_AWS_ACCESS_KEY_ID}
-aws configure set aws_secret_access_key ${SM_AWS_SECRET_ACCESS_KEY}
-aws secretsmanager list-secrets --output yaml --no-cli-pager | yq -r '.SecretList[].Name' | grep "^${ACCOUNT_ID}/${CLUSTER_ID}" | sort
-aws-dev/mas-4/aws
-aws-dev/mas-4/cluster_domain
-aws-dev/mas-4/db2_default_channel
-aws-dev/mas-4/dro
-aws-dev/mas-4/ibm_entitlement
-aws-dev/mas-4/mongo   # TODO: remove this if we don't use cluster-level mongo secret in this demo
-aws-dev/mas-4/useast1a/license
-aws-dev/mas-4/useast1a/mongo
+mas gitops-license \
+  --license-file "/mascli/license.lic"
 ```
+
+This will create the following secret in AWS Secret Manager: `${ACCOUNT_ID}/${CLUSTER_ID}/${MAS_INSTANCE_ID}/license`.
+
 
 ### Install Maximo Application Suite Core Platform
 
@@ -393,6 +370,8 @@ You will see three child applications:
 After the Suite License Service application is synched you will find one more entry has been created in Secret Manager, created automatically by its post sync hook: `${ACCOUNT_ID}/${CLUSTER_ID}/${MAS_INSTANCE_ID}/sls`.
 
 The Suite application will not change to Healthy status until we complete the next step to configure its connection to DRO, SLS, and MongoDb.
+
+> TODO: sync jobs application sets up a new DocDB user for use by this SLS and MAS instance.
 
 ### Configure Maximo Application Suite Core Platform
 ```bash
