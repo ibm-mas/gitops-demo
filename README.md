@@ -280,7 +280,7 @@ It should take less than 10 minutes for this application to reach Healthy/Synced
 ### Setup Mongo
 
 
-MAS and its application depend on MongoDB. In this demonstration, we will make use of AWS DocumentDB. The following commands will provision a 3 node `db.t3.medium` DocDB instance in your AWS account. A new secret (`${ACCOUNT_ID}/${CLUSTER_ID}/mongo`) will be added to AWS Secrets Manager holding all the information necessary to connect, which will be used by the IBM Suite License Service and any instances of IBM Maximo Application Suite installed on this cluster.
+IBM Maximo Application Suite and the the IBM Suite License Service depend on MongoDB. In this demonstration, we will make use of AWS DocumentDB (DocDB). The following commands will provision a 3 node `db.t3.medium` DocDB instance in your AWS account. A new secret (`${ACCOUNT_ID}/${CLUSTER_ID}/mongo`) will be added to AWS Secrets Manager holding all the information necessary to connect, which will be used by the IBM Suite License Service and any instances of IBM Maximo Application Suite installed on this cluster.
 
 > It is possible to use other MongoDB providers with MAS Gitops, but this is not covered in this demonstration.
 
@@ -297,6 +297,7 @@ aws ec2 associate-vpc-cidr-block \
 --vpc-id $VPC_ID \
 --cidr-block 10.1.0.0/23
 
+# Provision DocDB and register its details in the ${ACCOUNT_ID}/${CLUSTER_ID}/mongo secret
 mas gitops-mongo \
   --mongo-provider "aws" \
   --aws-vpc-id "${VPC_ID}" \
@@ -338,8 +339,9 @@ This will create the following secret in AWS Secret Manager: `${ACCOUNT_ID}/${CL
 ### Install Maximo Application Suite Core Platform
 
 ```bash
-OCP_DOMAIN="---.com"
-MAS_DOMAIN="${MAS_INSTANCE_ID}.apps.rosa.${OCP_DOMAIN}"
+# NOTE: this depends on the ROSA_CLUSTER_API_URL variable set earlier in this demonstration to work
+OCP_DOMAIN="$(echo ${ROSA_CLUSTER_API_URL} | awk -F[/:] '{print $4}' | sed 's/^api\.//')"
+MAS_DOMAIN="${MAS_INSTANCE_ID}.apps.${OCP_DOMAIN}"
 
 mas gitops-suite \
   --github-push \
@@ -350,28 +352,32 @@ mas gitops-suite \
   --mas-domain "${MAS_DOMAIN}"
 ```
 
-This will generate three new configuration files:
+This will generate three new configuration files and push them to your **Git Config Repo**:
 - `/${ACCOUNT_ID}/${CLUSTER_ID}/${MAS_INSTANCE_ID}/ibm-mas-instance-base.yaml`
 - `/${ACCOUNT_ID}/${CLUSTER_ID}/${MAS_INSTANCE_ID}/ibm-mas-suite.yaml`
 - `/${ACCOUNT_ID}/${CLUSTER_ID}/${MAS_INSTANCE_ID}/ibm-sls.yaml`
 
+It will create one new secret `${ACCOUNT_ID}/${CLUSTER_ID}/${MAS_INSTANCE_ID}/mongo` that includes the connection details from the cluster-level `${ACCOUNT_ID}/${CLUSTER_ID}/mongo` that was created earlier.
 
-After a few minutes you should see a new instance root application `TODO` appear as a child of the instance application set under the cluster root application:
 
-![cluster root app after MAS instance installation](docs/img002/05-inst1.png)
+After a few minutes you should see a new **Instance Root Application** appear as a child of the **Instance Root Application Set** under the **Cluster Root Application**:
 
-Navigate to the instance root application by clicking the button indicated in the screenshot above.
+![ArgoCD Cluster Root after MAS instance installation](docs/screenshots/08-cluster-root-masinstance.png)
+
+Navigate to the **Instance Root Application** by clicking the **Open Application** button indicated in the screenshot above.
 You will see three child applications:
 - `sls.demo.us-east-2.demo1.dev1`
 - `suite.demo.us-east-2.demo1.dev1`
 
-![instance root app after MAS instance installation](docs/img/05-inst2.png)
+![instance root app after MAS instance installation](docs/screenshots/09-instance-root-01.png)
 
-After the Suite License Service application is synched you will find one more entry has been created in Secret Manager, created automatically by its post sync hook: `${ACCOUNT_ID}/${CLUSTER_ID}/${MAS_INSTANCE_ID}/sls`.
+> TODO: syncjob creates user in docdb and adds creds to mongo instance secret. This will be used to access DocDB by both SLS and MAS.
+
+> TODO: SLS syncs, then Suite syncs
+
+After the Suite License Service application sync completes and it progresses to `Healthy` you will find one more entry has been created in Secret Manager: `${ACCOUNT_ID}/${CLUSTER_ID}/${MAS_INSTANCE_ID}/sls`. This was created by a Job in the SLS Helm Chart.
 
 The Suite application will not change to Healthy status until we complete the next step to configure its connection to DRO, SLS, and MongoDb.
-
-> TODO: sync jobs application sets up a new DocDB user for use by this SLS and MAS instance.
 
 ### Configure Maximo Application Suite Core Platform
 ```bash
@@ -531,27 +537,3 @@ If you change any values in secrets manager, you must hard-refresh the appropria
 
 Cert deprovisioning steps will hang unless using ArgoCD 2.11.0 or later. If on ArgoCD <2.11, ensure the following steps are performed manually to avoid the problem:
 > TODO
-
-
-
-# Removed (for now)
-These `.yaml` configuration files are monitored by [Git Generators](https://argo-cd.readthedocs.io/en/stable/operator-manual/applicationset/Generators-Git/#git-generator-files) on the [Cluster Root Application Set](https://github.com/ibm-mas/gitops/blob/demo2/root-applications/ibm-mas-account-root/templates/000-cluster-appset.yaml) (installed by the **Account Root Application**), and the [MAS Instance Application Set](https://github.com/ibm-mas/gitops/blob/demo2/root-applications/ibm-mas-cluster-root/templates/099-instance-appset.yaml) (installed by the **Cluster Root Application**). The **Cluster Root Application** and **MAS Instance Root Application** Helm Charts contain templates that are conditionally enabled when the associated configuration is picked up the Application Sets. For instance, `ibm-operator-catalog.yaml` contains:
-```yaml
-ibm_operator_catalog:
-    mas_catalog_version: xxx
-    mas_catalog_image: xxx
-```
-
-When the associated Git generator on the [Cluster Root Application Set](https://github.com/ibm-mas/gitops/blob/demo2/root-applications/ibm-mas-account-root/templates/000-cluster-appset.yaml) picks up this file:
-```yaml
-- git:
-    repoURL: "{{ .Values.generator.repo_url }}"
-    revision: "{{ .Values.generator.revision }}"
-    files:
-    - path: "{{ .Values.account.id }}/*/ibm-operator-catalog.yaml"
-```
-It will be added to the Helm values used to render the [Cluster Root Application Helm Chart](https://github.com/ibm-mas/gitops/tree/demo2/root-applications/ibm-mas-cluster-root). This will result in condition at the top of the [000-ibm-operator-catalog-app](https://github.com/ibm-mas/gitops/blob/demo2/root-applications/ibm-mas-cluster-root/templates/000-ibm-operator-catalog-app.yaml) evaluating to true:
-```
-{{- if not (empty .Values.ibm_operator_catalog) }}
-```
-This will result in ArgoCD installing the IBM Operator Catalog Application, which in turn will deploy the resources in the [000-ibm-operator-catalog Helm Chart](https://github.com/ibm-mas/gitops/blob/demo2cluster-applications/000-ibm-operator-catalog) to the target cluster.
