@@ -225,15 +225,15 @@ mas gitops-cluster \
   --common-services-action install
 ```
 
-It will take a few minutes for the **Cluster Root Application Set** to see the new configuration files in your **Config Git Repo**. Once this happens, you will see a new **Cluster Root Application** appear as a child of the **Cluster Root Application Set**. It should begin syncing automatically, it will be in the "Progressing" state for a short while:
+It will take a few minutes for the **Cluster Root Application Set** to see the new configuration files in your **Config Git Repo**. Once this happens, you will see a new **Cluster Root Application** (`cluster.${CLUSTER_ID}`) appear as a child of the **Cluster Root Application Set**. It should begin syncing automatically, it will be in the `Progressing` state for a short while as indicated by the blue circle icon.
 
 ![ArgoCD Account Root Syncing](docs/screenshots/03-account-root-gitops-cluster-syncing.png)
 
-After a few minutes, it should transition to healthy:
+After a few minutes, it should transition to `Healthy` as indicated by the green heart icon:
 
 ![ArgoCD Account Root Healthy](docs/screenshots/04-account-root-gitops-cluster-healthy.png)
 
-Open the **Cluster Root Application** by clicking on the **Open application** button indicated in the screenshot above, the **Operator Catalog**, **Redhat Cert Manager** applications and the **Instance Root Application Set** will be visible as children of the **Cluster Root Application** 
+Open the `cluster.${CLUSTER_ID}` application by clicking on the **Open application** button indicated in the screenshot above, the **Operator Catalog** (`operator-catalog.${CLUSTER_ID}`), **Redhat Cert Manager** (`redhat-cert-manager.${CLUSTER_ID}`) applications and the **Instance Root Application Set** will be visible as children of the **Cluster Root Application** 
 
 ![ArgoCD Cluster Root](docs/screenshots/05-cluster-root.png)
 
@@ -251,7 +251,7 @@ mas gitops-dro \
   --github-push
 ```
 
-After a few minutes you should see two new applications appear as children of the cluster root application. The **DRO** application itself, along with a small "cleanup" application. The cleanup application contains an ArgoCD [PostDelete hook](https://argo-cd.readthedocs.io/en/stable/user-guide/resource_hooks/) necessary to ensure the **DRO** application is cleaned up properly when its config is deleted from the **Git Config Repo**.
+After a few minutes you should see two new applications appear as children of the `cluster.${CLUSTER_ID}`. The IBM DRO application (`dro.${CLUSTER_ID}`) itself, along with a small `ibm-dro-cleanup.${CLUSTER_ID}` application that contains an ArgoCD [PostDelete hook](https://argo-cd.readthedocs.io/en/stable/user-guide/resource_hooks/) necessary to ensure the `dro.${CLUSTER_ID}` application is cleaned up properly when its config is deleted from the **Git Config Repo**.
 
 ![ArgoCD Cluster Root after DRO install](docs/screenshots/06-cluster-root-dro.png)
 
@@ -270,11 +270,11 @@ mas gitops-db2u \
   --github-push
 ```
 
-After a few minutes you should see a new **DB2U** application appear as a child of the cluster root application.
+After a few minutes you should see the **DB2U** (`db2u.${CLUSTER_ID}`) application appear as a child of `cluster.${CLUSTER_ID}`.
 
 ![ArgoCD Cluster Root after DB2U install](docs/screenshots/07-cluster-root-db2u.png)
 
-It should take less than 10 minutes for this application to reach Healthy/Synced status. You can safely proceed with the next steps of this demonstration before this happens.
+It should take less than 10 minutes for this application to progress to `Healthy`. You can safely proceed with the next steps of this demonstration before this happens.
 
 
 ### Setup Mongo
@@ -365,19 +365,22 @@ After a few minutes you should see a new **Instance Root Application** appear as
 ![ArgoCD Cluster Root after MAS instance installation](docs/screenshots/08-cluster-root-masinstance.png)
 
 Navigate to the **Instance Root Application** by clicking the **Open Application** button indicated in the screenshot above.
-You will see three child applications:
-- `sls.demo.us-east-2.demo1.dev1`
-- `suite.demo.us-east-2.demo1.dev1`
+
+
+You should see four child applications: [`sls`](https://github.com/ibm-mas/gitops/tree/demo2/instance-applications/100-ibm-sls), [`suite`](https://github.com/ibm-mas/gitops/tree/demo2/instance-applications/130-ibm-mas-suite), [`syncres`](https://github.com/ibm-mas/gitops/tree/demo2/instance-applications/000-ibm-sync-resources) and [`syncjobs`](https://github.com/ibm-mas/gitops/tree/demo2/instance-applications/010-ibm-sync-jobs):
+
 
 ![instance root app after MAS instance installation](docs/screenshots/09-instance-root-01.png)
 
-> TODO: syncjob creates user in docdb and adds creds to mongo instance secret. This will be used to access DocDB by both SLS and MAS.
+The `syncres` and `syncjobs` applications are synced first. Once they finish syncing, a new user will have been created in your DocDb instance for use by IBM Maximo Application Suite and the the IBM Suite License Service. The credentials for this user will be added to the existing `${ACCOUNT_ID}/${CLUSTER_ID}/${MAS_INSTANCE_ID}/mongo` secret. You can see the logs of the Kubernetes Job that performed this by clicking the **Open Application** button on the syncjobs application, then clicking on the `aws-docdb-add-user` pod indicated in the screenshot below and opening its **LOGS** tab:
 
-> TODO: SLS syncs, then Suite syncs
+![syncjobs app](docs/screenshots/11-syncjobs.png)
 
-After the Suite License Service application sync completes and it progresses to `Healthy` you will find one more entry has been created in Secret Manager: `${ACCOUNT_ID}/${CLUSTER_ID}/${MAS_INSTANCE_ID}/sls`. This was created by a Job in the SLS Helm Chart.
+Navigate back to the **Instance Root Application** using the back button in your browser. After some time has passed, the `sls` sync will complete and it should process to `Healthy`. You will find one more entry has been created in Secret Manager `${ACCOUNT_ID}/${CLUSTER_ID}/${MAS_INSTANCE_ID}/sls`. The `suite` application will start syncing:
 
-The Suite application will not change to Healthy status until we complete the next step to configure its connection to DRO, SLS, and MongoDb.
+![instance root app after MAS instance installation](docs/screenshots/10-instance-root-02.png)
+
+The `suite` application will not progress to `Healthy` until we complete the next step to configure its connection to DRO, SLS, and DocDB.
 
 ### Configure Maximo Application Suite Core Platform
 ```bash
