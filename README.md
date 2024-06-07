@@ -486,7 +486,7 @@ You can safely proceed with the next steps of this demonstration before this hap
 ### Configure Maximo Application Suite Core Workspace
 
 > TODO: The `mas gitops-suite-workspace` command will:
-- For the first workspace, the `/${ACCOUNT_ID}/${CLUSTER_ID}/${MAS_INSTANCE_ID}/ibm-mas-suite-configs.yaml` configuration file and push it to your **Git Config Repo**. 
+- For the first workspace, create the `/${ACCOUNT_ID}/${CLUSTER_ID}/${MAS_INSTANCE_ID}/ibm-mas-suite-configs.yaml` configuration file and push it to your **Git Config Repo**. 
 
 > TODO: include this? 
 >- For subsequent workspaces, it will append to the `/${ACCOUNT_ID}/${CLUSTER_ID}/${MAS_INSTANCE_ID}/ibm-mas-suite-configs.yaml` configuration file and push the updates your **Git Config Repo**. 
@@ -505,21 +505,41 @@ You will see the `<workspace>-suite.<cluster>.<instance>` application appear und
 ![instance root app after workspace](docs/screenshots/16-instance-root-workspace.png)
 
 
-It will take a few minutes to become `Healthy`. You can safely proceed with the next steps of this demonstration before this happens.
+It will take a few minutes to become `Healthy`. The remaining steps in this demonstration cover installing the Manage Manage application and its dependencies using Gitops.  You can safely proceed with the next steps of this demonstration before this happens.
+
+> TODO: At this point, MAS is fully configured and you are able to access the admin/home dashboards, logging in with the superuser credentials.
+> NOTE that because we are managing MAS via gitops, changes should not be made (changing configs, installing Applications etc) via the admin UI (or the REST API) as ArgoCD is responsible for managing these and making sure that they reflect the contents of the **Git Config Repo**.
+
+![MAS Admin UI](docs/screenshots/17-mas-admin-ui.png)
+
+![MAS Admin UI - Workspace](docs/screenshots/18-mas-admin-ui-workspace.png)
+
+![MAS Admin UI - Configurations](docs/screenshots/19-mas-admin-ui-configs.png)
+
+![MAS Admin UI - Configurations - SLS](docs/screenshots/20-mas-admin-ui-configs-sls.png)
 
 ### Configure DB2 Database for MAS Manage Application
 
-> TODO: The `mas gitops-db2u-database` is used to configure an in-cluster DB2 database for use by MAS. MAS also supports generic JDBC providers that may be on or off cluster, but this is not covered in this demonstration. When run, the command will:
+> TODO: The `mas gitops-db2u-database` is used to configure an in-cluster DB2 database for use by MAS. MAS also supports generic JDBC databases that may be on or off cluster, but this is not covered in this demonstration. 
 
+DB2 makes use of persistent storage. For database, log and temporary tablespace storage, a block storage solution is recommended. For metadata and backup storage, a file storage solution is recommended. In ROSA, we can make use of the built-in `gp3` StorageClass for block storage. To provide file storage, we can install the [Amazon Elastic File System](https://docs.aws.amazon.com/efs/latest/ug/gs-step-two-create-efs-resources.html) to establish the `efs` StorageClass. You can achieve this using the `mas gitops-efs` command:
 
+```bash
+mas gitops-efs \
+  --cloud-provider "aws" \
+  --aws-region "${AWS_REGION}"
+```
 
-First, you'll need to create an EFS filesystem in the same region as your ROSA cluster, then create mount targets for the EFS filesystem in the same VPC and subnets as your ROSA cluster. Please refer to the [AWS documentation](https://docs.aws.amazon.com/efs/latest/ug/gs-step-two-create-efs-resources.html). Once created, determine the name of the associated StorageClass in the cluster (`oc get storageclasses`).
-
+We are now ready to run the `mas gitops-db2u-database` command, This will:
+- For the first DB2 database, create the `/${ACCOUNT_ID}/${CLUSTER_ID}/${MAS_INSTANCE_ID}/ibm-db2u-databases.yaml` configuration file and push it to your **Git Config Repo**. 
+- For subsequent DB2 databases, it will append to the `/${ACCOUNT_ID}/${CLUSTER_ID}/${MAS_INSTANCE_ID}/ibm-db2u-databases.yaml` configuration file and push the updates your **Git Config Repo**. 
 
 ```bash
 
-# The name of the EFS StorageClass in ROSA
-export STORAGE_CLASS="efs-xxx"
+export BLOCK_STORAGE_CLASS="gp3"
+
+# This is the storage class that was setup by the "mas gitops-efs" command
+export FILE_STORAGE_CLASS="efs${MAS_INSTANCE_ID}"
 
 
 mas gitops-db2u-database \
@@ -527,17 +547,23 @@ mas gitops-db2u-database \
   --db2-version "s11.5.9.0-cn1" \
   --db2-4k-device-support "" \
   --db2-workload "" \
-  --db2-meta-storage-class "${STORAGE_CLASS}" \
-  --db2-backup-storage-class "${STORAGE_CLASS}" \
-  --db2-data-storage-class "${STORAGE_CLASS}" \
-  --db2-temp-storage-class "${STORAGE_CLASS}" \
-  --db2-logs-storage-class "${STORAGE_CLASS}" \
+  --db2-data-storage-class "${BLOCK_STORAGE_CLASS}" \
+  --db2-logs-storage-class "${BLOCK_STORAGE_CLASS}" \
+  --db2-audit-logs-storage-class "${BLOCK_STORAGE_CLASS}" \
+  --db2-temp-storage-class "${BLOCK_STORAGE_CLASS}" \
+  --db2-meta-storage-class "${FILE_STORAGE_CLASS}" \
+  --db2-backup-storage-class "${FILE_STORAGE_CLASS}" \
   --db2-database-db-config-yaml "/demo-files/db2/db2_database_db_config_manage.yaml" \
   --db2-instance-dbm-config-yaml "/demo-files/db2/db2_instance_dbm_config_manage.yaml" \
   --db2-instance-registry-yaml "/demo-files/db2/db2_instance_registry_manage.yaml" \
   --mas-app-id "manage"
 ```
 
+You will see the `db2-db.<cluster>.<instance>.manage` application appear under `instance.<cluster>.<instance>`:
+
+![instance root app after db2 database](docs/screenshots/21-instance-root-db2-database.png)
+
+This can take up to 30 minutes or so to become `Healthy`, but you can safely proceed with the next steps of this demonstration before this happens.
 
 ### Configure MAS with Manage DB2 Database
 
