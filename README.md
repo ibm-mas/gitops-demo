@@ -383,52 +383,84 @@ Navigate back to the **Instance Root Application** using the back button in your
 The `suite` application will not progress to `Healthy` until we complete the next step to configure its connection to DRO, SLS, and DocDB.
 
 ### Configure Maximo Application Suite Core Platform
-```bash
 
+
+#### Suite System Mongo Configuration
+
+```bash
 mas gitops-mas-config \
   --github-push \
   --mas-config-type mongo \
   --config-action upsert \
   --mas-config-scope system \
   --mongo-provider aws
+```
+
+This will read `${ACCOUNT_ID}/${CLUSTER_ID}/${MAS_INSTANCE_ID}/mongo` secret set in the previous step and use it to generate a new configuration file and push it to your **Git Config Repo** as `/${ACCOUNT_ID}/${CLUSTER_ID}/${MAS_INSTANCE_ID}/ibm-mas-suite-configs.yaml`. This YAML file is used to define all types of suite configuration. At the moment it only contains the configuration for Mongo, but we are about to add others in the following steps.
+
+You will see the `<inst>-mongo-system.<cluster>` application appear under `instance.<cluster>.<instance>`:
+
+![instance root app after Mongo config](docs/screenshots/12-instance-root-mongocfg.png)
+
+It will take a few minutes to become `Healthy`. You can safely proceed with the next steps of this demonstration before this happens.
 
 
+#### Suite System SLS Configuration
+
+```bash
 mas gitops-mas-config \
   --github-push \
   --mas-config-type sls \
   --config-action upsert \
   --mas-config-scope system
+```
+This will add sls configuration to the existing `/${ACCOUNT_ID}/${CLUSTER_ID}/${MAS_INSTANCE_ID}/ibm-mas-suite-configs.yaml` and push the updated file to your **Git Config Repo**. You will see the `<inst>-sls-system.<cluster>` application appear under `instance.<cluster>.<instance>`:
+
+![instance root app after SLS config](docs/screenshots/13-instance-root-slscfg.png)
 
 
-DRO_CA_CERTIFICATE_FILE="/tmp/dro_ca.crt"
+It will take a few minutes to become `Healthy`. You can safely proceed with the next steps of this demonstration before this happens.
 
-# > TODO: document use of https://github.com/ibm-mas/ansible-devops/blob/master/ibm/mas_devops/common_tasks/get_ingress_cert.yml in case user doesn't know the name of this secret
-oc get secret default-ingress-cert -n openshift-ingress -ojsonpath='{.data.tls\.crt}' | base64 -d > ${DRO_CA_CERTIFICATE_FILE}
 
-# > TODO: where does this come from? It is optional in the script, but if not set, AVP refuses to render the app due to missing secret
-MAS_SEGMENT_KEY="xxx"
+#### Suite System DRO Configuration
+
+```bash
+
+# First we need to fetch your cluster's ingress certificate. This will be used by MAS to communicate with the DRO service installed earlier on the cluster.
+DRO_CA_CERTIFICATE_FILE="/mascli/${CLUSTER_ID}-primary-cert-bundle-secret_tls.crt"
+oc get secret -n openshift-ingress ${CLUSTER_ID}-primary-cert-bundle-secret -ojsonpath='{.data.tls\.crt}' | base64 -d > ${DRO_CA_CERTIFICATE_FILE}
+
+# You can replace these values with your details
+DRO_CONTACT_FIRSTNAME="Joe"
+DRO_CONTACT_LASTNAME="Blogs"
+DRO_CONTACT_EMAIL="user@example.com"
+
 mas gitops-mas-config \
   --github-push \
   --mas-config-type bas \
   --config-action upsert \
   --mas-config-scope system \
-  --dro-contact-email email.com \
-  --dro-contact-firstname joe \
-  --dro-contact-lastname bloggs \
-  --dro-ca-certificate-file $DRO_CA_CERTIFICATE_FILE \
-  --mas-segment-key "${MAS_SEGMENT_KEY}"
+  --dro-contact-firstname "${DRO_CONTACT_FIRSTNAME}" \
+  --dro-contact-lastname "${DRO_CONTACT_LASTNAME}" \
+  --dro-contact-email "${DRO_CONTACT_EMAIL}" \
+  --dro-ca-certificate-file "${DRO_CA_CERTIFICATE_FILE}"
 ```
 
-This will generate the 3 configurations that need to be applied to the Core Platform:
-- [/demo/us-east-2/demo1/dev1/configs/system.ibm-mas-bas-config.yaml](/demo/us-east-2/demo1/dev1/configs/system.ibm-mas-bas-config.yaml)
-- [/demo/us-east-2/demo1/configs/system.ibm-mas-mongo-config.yaml](/demo/us-east-2/demo1/dev1/configs/system.ibm-mas-mongo-config.yaml)
-- [/demo/us-east-2/demo1/configs/system.ibm-mas-sls-config.yaml](/demo/us-east-2/demo1/dev1/configs/system.ibm-mas-sls-config.yaml)
 
-Once these three new applications are synced and healthy the Suite application will change to report healthy status as well and you have successfully installed and configured the Maximo Application Suite Core Platform
+You will see the `<inst>-bas-system.<cluster>` application appear under `instance.<cluster>.<instance>`:
 
-![ArgoCD during MAS configuration](docs/img/05-suitecfg.png)
+![instance root app after BAS confign](docs/screenshots/14-instance-root-bascfg.png)
 
-Next, we create the Workspace to complete the base configuration of the Maximo Application Suite Core Platform:
+It will take a few minutes to become `Healthy`. This completes the minimal configuration required by MAS Core; after a few minutes, the `suite.<cluster>.<instance>` application should become `Healthy`:
+
+![instance root app after Suite healthy](docs/screenshots/15-instance-root-suitehealthy.png)
+
+
+
+You can safely proceed with the next steps of this demonstration before this happens.
+
+
+### Configure Maximo Application Suite Core Workspace
 
 ```bash
 mas gitops-suite-workspace \
