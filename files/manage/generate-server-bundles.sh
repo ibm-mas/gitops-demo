@@ -1,10 +1,12 @@
 #!/bin/bash
 
+OUTPUT_FILE=$1
 
+[[ -z "${OUTPUT_FILE}" ]] && echo "usage: generate-server-bundles.sh <output-file>" && exit 1
 [[ -z "${MAS_INSTANCE_ID}" ]] && echo "Required MAS_INSTANCE_ID env var not found" && exit 1
 [[ -z "${MAS_WORKSPACE_ID}" ]] && echo "Required MAS_WORKSPACE_ID env var not found" && exit 1
 
-
+echo "OUTPUT_FILE ............ ${OUTPUT_FILE}"
 echo "MAS_INSTANCE_ID  ....... ${MAS_INSTANCE_ID}"
 echo "MAS_WORKSPACE_ID ....... ${MAS_WORKSPACE_ID}"
 
@@ -128,7 +130,6 @@ SB4_B64=$(echo -n '<?xml version="1.0" encoding="UTF-8"?>
 </server>
 ' | base64 -w0)
 
-MANAGE_SERVER_BUNDLES_FILE="manage-server-bundles.yaml"
 echo '
 mas_app_server_bundles_combined_add_server_config:
   '${MAS_WORKSPACE_ID}'-manage-d--sb0--asc--sn: '${SB0_B64}'
@@ -136,7 +137,7 @@ mas_app_server_bundles_combined_add_server_config:
   '${MAS_WORKSPACE_ID}'-manage-d--sb2--asc--sn: '${SB2_B64}'
   '${MAS_WORKSPACE_ID}'-manage-d--sb3--asc--sn: '${SB3_B64}'
   '${MAS_WORKSPACE_ID}'-manage-d--sb4--asc--sn: '${SB4_B64}'
-' > $MANAGE_SERVER_BUNDLES_FILE
+' > $OUTPUT_FILE
 
 
-echo "Server bundles generated: ${MANAGE_SERVER_BUNDLES_FILE}"
+echo "Server bundles generated: ${OUTPUT_FILE}"

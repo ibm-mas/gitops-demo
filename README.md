@@ -399,13 +399,15 @@ The `suite` application will not progress to `Healthy` until we complete the nex
 
 ### Configure Maximo Application Suite Core Platform
 
+> TODO: MAS requires some core configurations to operate ...
+
 
 > TODO: the `mas gitops-mas-config` function is used to `upsert`, or `remove`, ....
 
 
 #### Suite System Mongo Configuration
 
-> TODO: mas gitops-mas-config when `upsert` `mongo` will ....
+> TODO: `mas gitops-config` command below will:
 
 ```bash
 mas gitops-mas-config \
@@ -427,7 +429,7 @@ It will take a few minutes to become `Healthy`. You can safely proceed with the 
 
 #### Suite System SLS Configuration
 
-> TODO: mas gitops-mas-config when `upsert` `sls` will ....
+> TODO: `mas gitops-config` command below will:
 
 ```bash
 mas gitops-mas-config \
@@ -446,7 +448,7 @@ It will take a few minutes to become `Healthy`. You can safely proceed with the 
 
 #### Suite System DRO Configuration
 
-> TODO: mas gitops-mas-config when `upsert` `bas` will ....
+> TODO: `mas gitops-config` command below will:
 
 ```bash
 
@@ -479,7 +481,6 @@ It will take a few minutes to become `Healthy`. This completes the minimal confi
 
 ![instance root app after Suite healthy](docs/screenshots/15-instance-root-suitehealthy.png)
 
-
 You can safely proceed with the next steps of this demonstration before this happens.
 
 
@@ -507,7 +508,8 @@ You will see the `<workspace>-suite.<cluster>.<instance>` application appear und
 
 It will take a few minutes to become `Healthy`. The remaining steps in this demonstration cover installing the Manage Manage application and its dependencies using Gitops.  You can safely proceed with the next steps of this demonstration before this happens.
 
-> TODO: At this point, MAS is fully configured and you are able to access the admin/home dashboards, logging in with the superuser credentials.
+> TODO: maybe just demo the MAS instance UI at the end once, once Manage is setup?
+> TODO: At this point, MAS is fully configured and you are able to access the admin/home dashboards (https://admin.inst1.apps.masdemo1.654x.p1.openshiftapps.com/), logging in with the superuser credentials.
 > NOTE that because we are managing MAS via gitops, changes should not be made (changing configs, installing Applications etc) via the admin UI (or the REST API) as ArgoCD is responsible for managing these and making sure that they reflect the contents of the **Git Config Repo**.
 
 ![MAS Admin UI](docs/screenshots/17-mas-admin-ui.png)
@@ -518,7 +520,7 @@ It will take a few minutes to become `Healthy`. The remaining steps in this demo
 
 ![MAS Admin UI - Configurations - SLS](docs/screenshots/20-mas-admin-ui-configs-sls.png)
 
-### Configure DB2 Database for MAS Manage Application
+### Configure a DB2 Database for the MAS Manage Application
 
 > TODO: The `mas gitops-db2u-database` is used to configure an in-cluster DB2 database for use by MAS. MAS also supports generic JDBC databases that may be on or off cluster, but this is not covered in this demonstration. 
 
@@ -563,9 +565,29 @@ You will see the `db2-db.<cluster>.<instance>.manage` application appear under `
 
 ![instance root app after db2 database](docs/screenshots/21-instance-root-db2-database.png)
 
-This can take up to 30 minutes or so to become `Healthy`, but you can safely proceed with the next steps of this demonstration before this happens.
+> TODO: as part of this application's sync process, it will perform some additional operations:
+>   - apply some configuration required by the Manage application this DB2 database will be serving.
+>   - register the `${ACCOUNT_ID}/${CLUSTER_ID}/${MAS_INSTANCE_ID}/jdbc/${DB2_INSTANCE_NAME}/config` secret containing runtime generated information that can be securely referenced by JDBC configus (see next step)
 
-### Configure MAS with Manage DB2 Database
+> 
+> These actions occur at the end of the application's sync process and are performed by the `postsync-setup-db2-*` Job. Once the Job is created, you can view its logs by opening the `db2-db.<cluster>.<instance>.manage` application, clicking on the job and navigating to the **Logs** tab:
+> ![db2 database postsync](docs/screenshots/22-db2-database-postsync.png)
+
+
+
+It will take around 20 minutes for the `db2-db.<cluster>.<instance>.manage` application to become `Healthy`,  but you can safely proceed with the next steps of this demonstration before this happens.
+
+
+
+
+
+
+### JDBC Configuration for Manage
+
+The Manage MAS Application depends on a JDBC Database. We will provide it with the details of the DB2 database that we setup in the previous step. The configuration is provided using the same mechanism we used for Mongo, SLS and BAS earlier. This time, however, we will be setting the configuration at the "Workspace-Application" scope, since this configuration is intended to be used by (and only by) the Manage Application and the workspace we are going to configure for it later.
+
+> TODO: The `gitops-mas-config` command below will:
+
 
 ```bash
 mas gitops-mas-config \
@@ -575,11 +597,23 @@ mas gitops-mas-config \
   --mas-config-scope wsapp \
   --mas-app-id "manage" \
   --mas-workspace-id "${MAS_WORKSPACE_ID}" \
-  --db2-instance-name "db2wh-${MAS_INSTANCE_ID}-manage"
+  --jdbc-type "incluster-db2" \
+  --jdbc-instance-name "db2wh-${MAS_INSTANCE_ID}-manage"
 ```
+
+You will see the `<instane>-jdbc-wsapp-<workspace>-manage.<cluster>` application appear under `instance.<cluster>.<instance>`:
+
+![instance root app after jdbc](docs/screenshots/23-instance-root-jdbc.png)
+
+> TODO: At the start of the application's sync process it will register an LDAP username/password in the DB2 instance.
+
+Note that this application will not begin syncing until _after_ the `db2-db.<cluster>.<instance>.manage` application has become `Healthy`. Once it begins syncing, it will itself become `Healthy` within a few minutes. You can safely proceed with the next steps of this demonstration before this happens.
 
 
 ### 12. Install Manage
+
+Now that we have all of its prerequisites setup, we are ready to install the Manage application using Gitops. 
+> TODO: The `mas gitops-suite-app-install` command will:
 
 ```bash
 mas gitops-suite-app-install \
@@ -592,33 +626,54 @@ mas gitops-suite-app-install \
   --mas-edition "essentials-maintenance"
 ```
 
+You will see the `manage.<cluster>.<instance>` application appear under `instance.<cluster>.<instance>`:
 
-### 13. Configure Manage
+
+![instance root app after manage install](docs/screenshots/24-instance-root-manage-install.png)
+
+
+It will take around 10 minutes for the `manage.<cluster>.<instance>` application to become `Healthy`. You can safely proceed with the next steps of this demonstration before this happens.
+
+### 13. Activate Manage
+
+Now that its install configuration is in place, we can establish the configuration that will activate the Manage application and create a workspace.
+
+> TODO: The `mas gitops-suite-app-config` command will:
+
+
+First, we need to generate some configuration artefacts for Manage. These will be included in the YAML configuration file in the **Git Config Repo**.
 
 ```bash
 
+export DEFAULT_FILE_STORAGE_CLASS="${FILE_STORAGE_CLASS}"
+
 # Run a script to generate YAML containing basic server bundles for Manage
 # The exported values of the MAS_INSTANCE_ID and MAS_WORKSPACE_ID env vars will substituted in where appropriate
-bash /demo-files/manage/generate-server-bundles.sh
+MANAGE_SERVER_BUNDLES_FILE="/mascli/manage-server-bundles.yaml"
+bash /demo-files/manage/generate-server-bundles.sh ${MANAGE_SERVER_BUNDLES_FILE}
 
 # Run a script to generate YAML containing the spec for the Manage Workspace we are about to create
 # The exported values of the STORAGE_CLASS and MAS_WORKSPACE_ID env vars will substituted in where appropriate
-bash /demo-files/manage/generate-server-bundles.sh
+MANAGE_APPWS_FILE="/mascli/manage-appws-spec.yaml"
+bash /demo-files/manage/generate-appws-spec.sh ${MANAGE_APPWS_FILE}
 
-export DEFAULT_FILE_STORAGE_CLASS="${STORAGE_CLASS}"
 
+```
+
+Now we can run the `mas gitops-suite-app-config` command:
+
+```bash
 mas gitops-suite-app-config \
   --github-push \
   --mas-app-id  "manage" \
   --mas-app-kind "ManageApp" \
   --mas-appws-api-version "apps.mas.ibm.com/v1" \
   --mas-appws-kind "ManageWorkspace" \
-  --mas-appws-spec-yaml "/demo-files/manage/manage-appws-spec.yaml" \
-  --mas-app-server-bundles-combined-add-server-config-yaml "/demo-files/manage/manage-server-bundles.yaml"
+  --mas-app-server-bundles-combined-add-server-config-yaml "${MANAGE_SERVER_BUNDLES_FILE}" \
+  --mas-appws-spec-yaml "${MANAGE_APPWS_FILE}"
 ```
 
-
-![ArgoCD after Manage activated](docs/img002/05-inst8.png)
+![ArgoCD after Manage activated](docs/screenshots/25-instance-root-manage-activated.png)
 
 
 # Known Issues / Troubleshooting
@@ -629,3 +684,4 @@ If you change any values in secrets manager, you must hard-refresh the appropria
 
 Cert deprovisioning steps will hang unless using ArgoCD 2.11.0 or later. If on ArgoCD <2.11, ensure the following steps are performed manually to avoid the problem:
 > TODO
+

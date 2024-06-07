@@ -1,14 +1,15 @@
 #!/bin/bash
 
+OUTPUT_FILE=$1
 
-[[ -z "${STORAGE_CLASS}" ]] && echo "Required STORAGE_CLASS env var not found" && exit 1
+[[ -z "${OUTPUT_FILE}" ]] && echo "usage: generate-appws-spec.sh <output-file>" && exit 1
+[[ -z "${DEFAULT_FILE_STORAGE_CLASS}" ]] && echo "Required DEFAULT_FILE_STORAGE_CLASS env var not found" && exit 1
 [[ -z "${MAS_WORKSPACE_ID}" ]] && echo "Required MAS_WORKSPACE_ID env var not found" && exit 1
 
+echo "OUTPUT_FILE ....................... ${OUTPUT_FILE}"
+echo "DEFAULT_FILE_STORAGE_CLASS  ....... ${DEFAULT_FILE_STORAGE_CLASS}"
+echo "MAS_WORKSPACE_ID .................. ${MAS_WORKSPACE_ID}"
 
-echo "STORAGE_CLASS  ....... ${STORAGE_CLASS}"
-echo "MAS_WORKSPACE_ID ....... ${MAS_WORKSPACE_ID}"
-
-MANAGE_APPWS_SPEC_YAML_FILE="manage-appws-spec.yaml"
 echo '
 mas_appws_spec:
   bindings:
@@ -37,19 +38,19 @@ mas_appws_spec:
           mountPath: /DOCLINKS
           pvcName: manage-doclinks
           size: 20Gi
-          storageClassName: '${STORAGE_CLASS}'
+          storageClassName: '${DEFAULT_FILE_STORAGE_CLASS}'
         - accessModes:
             - ReadWriteMany
           mountPath: /bim
           pvcName: manage-bim
           size: 20Gi
-          storageClassName: '${STORAGE_CLASS}'
+          storageClassName: '${DEFAULT_FILE_STORAGE_CLASS}'
         - accessModes:
             - ReadWriteMany
           mountPath: /jms
           pvcName: manage-jms
           size: 20Gi
-          storageClassName: '${STORAGE_CLASS}'
+          storageClassName: '${DEFAULT_FILE_STORAGE_CLASS}'
       serverBundles:
         - additionalServerConfig:
             secretName: '${MAS_WORKSPACE_ID}'-manage-d--sb0--asc--sn
@@ -100,7 +101,7 @@ mas_appws_spec:
     languages:
       baseLang: EN
       secondaryLangs: []
-' > $MANAGE_APPWS_SPEC_YAML_FILE
+' > $OUTPUT_FILE
 
 
-echo "App workspace spec yaml generated: ${MANAGE_APPWS_SPEC_YAML_FILE}"
+echo "App workspace spec yaml generated: ${OUTPUT_FILE}"
