@@ -669,10 +669,35 @@ You will see the `<workspace>.manage.<cluster>.<instance>` application appear un
 
 ![ArgoCD after Manage activated](docs/screenshots/25-instance-root-manage-activated.png)
 
+It will take about 2 hours for the `<workspace>.manage.<cluster>.<instance>`  application to progress to `Healthy`.
 
 ## Access MAS
+> TODO: tidy this up
+
+
 > TODO: At this point, MAS is fully configured and you are able to access the admin/home dashboards (https://admin.inst1.apps.masdemo1.654x.p1.openshiftapps.com/), logging in with the superuser credentials.
 > NOTE that because we are managing MAS via gitops, changes should not be made (changing configs, installing Applications etc) via the admin UI (or the REST API) as ArgoCD is responsible for managing these and making sure that they reflect the contents of the **Git Config Repo**.
+
+
+
+
+```bash
+# get admin route and open in browser
+oc get route ${MAS_INSTANCE_ID}-admin -n mas-${MAS_INSTANCE_ID}-core -ojsonpath='{.spec.host}'
+
+
+# login with superuser creds, you can get them using the following commands:
+oc get secret ${MAS_INSTANCE_ID}-credentials-superuser -n mas-${MAS_INSTANCE_ID}-core -ojsonpath='{.data.username}' | base64 -d
+oc get secret ${MAS_INSTANCE_ID}-credentials-superuser -n mas-${MAS_INSTANCE_ID}-core -ojsonpath='{.data.password}' | base64 -d
+```
+
+Assign an email address new password to `MAXADMIN` user an replace their password. Make a note of the new password.
+
+Logout of superuser. Log back in as MAXADMIN using the new password.
+
+Hit **Launch** on Manage
+
+
 
 ![MAS Admin UI](docs/screenshots/17-mas-admin-ui.png)
 
@@ -682,11 +707,12 @@ You will see the `<workspace>.manage.<cluster>.<instance>` application appear un
 
 ![MAS Admin UI - Configurations - SLS](docs/screenshots/20-mas-admin-ui-configs-sls.png)
 
-> TODO: screenshot of MAS Application screen with Manage Activated
 
-> TODO: show how to Login to Manage
+![MAS Admin UI - Manage](docs/screenshots/27-suiteui-manage.png)
 
-> TODO: screenshot of Manage UI
+![MAS Home UI - Manage](docs/screenshots/32-home-ui-apps.png)
+
+![MAS Manage UI](docs/screenshots/28-manageui.png)
 
 
 
