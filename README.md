@@ -128,6 +128,7 @@ ROSA_CLUSTER_ADMIN_PASSWORD="$(cat ${ROSA_CLUSTER_DETAILS_YAML} | /usr/bin/yq .d
 oc login "${ROSA_CLUSTER_API_URL}" --username "${ROSA_CLUSTER_ADMIN_USERNAME}" --password "${ROSA_CLUSTER_ADMIN_PASSWORD}" --insecure-skip-tls-verify
 ```
 
+> Note down these details in a secure location outside of the container so that you can easily recover them in the event that the container is lost.
 
 
 ### Setup your Config Git Repo
@@ -241,6 +242,8 @@ Open the `cluster.${CLUSTER_ID}` application by clicking on the **Open applicati
 
 
 ### Generate configuration for DRO
+
+> TODO: pushes to **Git Config Repo**
 The `mas gitops-dro` function will generate one new configuration file in the GitHub working directory:
 - `/${ACCOUNT_ID}/${CLUSTER_ID}/ibm-dro.yaml`
 
@@ -259,8 +262,12 @@ It should take less than 10 minutes for both of these application to reach Healt
 
 
 ### Generate configuration for the DB2U operator application
+
+> TODO: the `mas gitops-db2u` function will....
+
 Later in this demonsration, we plan to install the Manage application in our MAS instance. Manage depends on a DB2 database, and we are going to deploy this database to our cluster. Before we do this, we must install the DB2U operator:
 
+> TODO: pushes to **Git Config Repo**
 The `mas gitops-db2u` function will generate one new configuration file in the GitHub working directory:
 - `/${ACCOUNT_ID}/${CLUSTER_ID}/ibm-db2u.yaml`
 
@@ -279,6 +286,8 @@ It should take less than 10 minutes for this application to progress to `Healthy
 
 ### Setup Mongo
 
+
+> TODO: the `mas gitops-mongo` function will....
 
 IBM Maximo Application Suite and the the IBM Suite License Service depend on MongoDB. In this demonstration, we will make use of AWS DocumentDB (DocDB). The following commands will provision a 3 node `db.t3.medium` DocDB instance in your AWS account. A new secret (`${ACCOUNT_ID}/${CLUSTER_ID}/mongo`) will be added to AWS Secrets Manager holding all the information necessary to connect, which will be used by the IBM Suite License Service and any instances of IBM Maximo Application Suite installed on this cluster.
 
@@ -314,6 +323,9 @@ mas gitops-mongo \
 
 ### Configure License File for Maximo Application Suite Core Platform
 
+
+> TODO: the `mas gitops-license` function will....
+
 In a new terminal session, run the following command to copy your MAS License file into the MAS CLI container:
 
 ```bash
@@ -337,6 +349,9 @@ This will create the following secret in AWS Secret Manager: `${ACCOUNT_ID}/${CL
 
 
 ### Install Maximo Application Suite Core Platform
+
+
+> TODO: the `mas gitops-suite` function will....
 
 ```bash
 # NOTE: this depends on the ROSA_CLUSTER_API_URL variable set earlier in this demonstration to work
@@ -385,7 +400,12 @@ The `suite` application will not progress to `Healthy` until we complete the nex
 ### Configure Maximo Application Suite Core Platform
 
 
+> TODO: the `mas gitops-mas-config` function is used to `upsert`, or `remove`, ....
+
+
 #### Suite System Mongo Configuration
+
+> TODO: mas gitops-mas-config when `upsert` `mongo` will ....
 
 ```bash
 mas gitops-mas-config \
@@ -407,6 +427,8 @@ It will take a few minutes to become `Healthy`. You can safely proceed with the 
 
 #### Suite System SLS Configuration
 
+> TODO: mas gitops-mas-config when `upsert` `sls` will ....
+
 ```bash
 mas gitops-mas-config \
   --github-push \
@@ -423,6 +445,8 @@ It will take a few minutes to become `Healthy`. You can safely proceed with the 
 
 
 #### Suite System DRO Configuration
+
+> TODO: mas gitops-mas-config when `upsert` `bas` will ....
 
 ```bash
 
@@ -447,7 +471,7 @@ mas gitops-mas-config \
 ```
 
 
-You will see the `<inst>-bas-system.<cluster>` application appear under `instance.<cluster>.<instance>`:
+You will see the `<instance>-bas-system.<cluster>` application appear under `instance.<cluster>.<instance>`:
 
 ![instance root app after BAS confign](docs/screenshots/14-instance-root-bascfg.png)
 
@@ -456,11 +480,17 @@ It will take a few minutes to become `Healthy`. This completes the minimal confi
 ![instance root app after Suite healthy](docs/screenshots/15-instance-root-suitehealthy.png)
 
 
-
 You can safely proceed with the next steps of this demonstration before this happens.
 
 
 ### Configure Maximo Application Suite Core Workspace
+
+> TODO: The `mas gitops-suite-workspace` command will:
+- For the first workspace, the `/${ACCOUNT_ID}/${CLUSTER_ID}/${MAS_INSTANCE_ID}/ibm-mas-suite-configs.yaml` configuration file and push it to your **Git Config Repo**. 
+
+> TODO: include this? 
+>- For subsequent workspaces, it will append to the `/${ACCOUNT_ID}/${CLUSTER_ID}/${MAS_INSTANCE_ID}/ibm-mas-suite-configs.yaml` configuration file and push the updates your **Git Config Repo**. 
+    > As of 9.0.0, MAS does not fully support multi-tenancy and so should not be used. Support has been build into the Gitops configuration for future proofing only.
 
 ```bash
 mas gitops-suite-workspace \
@@ -470,18 +500,19 @@ mas gitops-suite-workspace \
   --mas-workspace-name "${MAS_WORKSPACE_NAME}"
 ```
 
-After committing the generated configuration file, ArgoCD will install the 12th and final ArgoCD Application will appear:
+You will see the `<workspace>-suite.<cluster>.<instance>` application appear under `instance.<cluster>.<instance>`:
 
-![ArgoCD after Workspace commit](docs/img/06-workspace.png)
+![instance root app after workspace](docs/screenshots/16-instance-root-workspace.png)
 
-We can review all the secrets created during the install using the command below:
-```bash
-aws secretsmanager list-secrets --output yaml --no-cli-pager | yq -r '.SecretList[].Name' | grep "^demo/demo1" | sort
-```
-![Entries in Secret Manager](docs/img/07-secretmgr.png)
 
+It will take a few minutes to become `Healthy`. You can safely proceed with the next steps of this demonstration before this happens.
 
 ### Configure DB2 Database for MAS Manage Application
+
+> TODO: The `mas gitops-db2u-database` is used to configure an in-cluster DB2 database for use by MAS. MAS also supports generic JDBC providers that may be on or off cluster, but this is not covered in this demonstration. When run, the command will:
+
+
+
 First, you'll need to create an EFS filesystem in the same region as your ROSA cluster, then create mount targets for the EFS filesystem in the same VPC and subnets as your ROSA cluster. Please refer to the [AWS documentation](https://docs.aws.amazon.com/efs/latest/ug/gs-step-two-create-efs-resources.html). Once created, determine the name of the associated StorageClass in the cluster (`oc get storageclasses`).
 
 
