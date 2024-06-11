@@ -14,7 +14,7 @@ The process boils down to the following steps:
   - Create a Git repository to hold your configuration files
   - Install and configure ArgoCD
   - Create the  **Account Root Application**
-  - Install Mongo DB on the cluster
+  - Provision DocumentDB
   - Create secrets in Secrets Manager and push config files to your Config Git repository
 
 The final step is achieved here using various `gitops` functions provided by the MAS CLI. These have been structured primarily to suit IBM Internal processes. We would like to provide a more streamlined and generic CLI/utility to achieve this in future iterations.
@@ -22,7 +22,7 @@ The final step is achieved here using various `gitops` functions provided by the
 ## Prerequisites
 
  - An AWS Account with [ROSA](https://console.aws.amazon.com/rosa/home) support enabled.
- - An access key and secret access key for calling AWS Secrets manager (configure [here](https://us-east-1.console.aws.amazon.com/iam/home#/security_credentials?section=IAM_credentials)).
+ - An AWS access key (configure [here](https://us-east-1.console.aws.amazon.com/iam/home#/security_credentials?section=IAM_credentials)). The key will be used for AWS Secret Manager CRUD operations, to create a ROSA cluster and to create DocumentDB instance. It must have sufficient permissions to perform all of these tasks.
  - Docker (or equivalent) installed on your local machine (for running the MAS CLI image)
  - An IBM Entitlement Key. Access [Container Software Library](https://myibm.ibm.com/products-services/containerlibrary) using your IBMId to obtain your entitlement key.
  - A MAS License File. Access [IBM License Key Center](https://licensing.subscribenet.com/control/ibmr/login), on the **Get Keys** menu select **IBM AppPoint Suites**. Select `IBM MAXIMO APPLICATION SUITE AppPOINT LIC` and on the next page fill in the information as below:
@@ -38,7 +38,7 @@ The final step is achieved here using various `gitops` functions provided by the
 
 ## Start the MAS CLI image and mount the demo files
 
-If you haven't already, clone this repository to your local machine. This is so we can mount some included configuration files into the MAS CLI container for use later.
+If you haven't already, clone this repository to your local machine. This is so we can mount some additional configuration files and scripts from this repository into the MAS CLI container for use later on.
 ```bash
 GITOPS_DEMO_PATH=~/gitops-demo
 git clone git@github.com:ibm-mas/gitops-demo --branch 002 ${GITOPS_DEMO_PATH}
