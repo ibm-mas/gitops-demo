@@ -98,11 +98,6 @@ export SM_AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID}"
 SM_AWS_ACCOUNT_ID="xxxxx"
 export SECRETS_PATH="arn:aws:secretsmanager:${SM_AWS_REGION}:${SM_AWS_ACCOUNT_ID}:secret"
 
-
-# TODO: this env var is expected by all the gitops functions, but none of them actually do anything with it. We should deprecate this.
-# The only place we actually need this information is gitops-bootstrap to set source.revision on the account root app
-# (and this set via the APP_REPO_REVISION env var)
-export GITOPS_VERSION="<deprecated>"
 ```
 
 > **Naming Length Restrictions** Because we stitch together the different IDs that form the hierarchy together we need to ensure that the total length is less than the 64 character limit of ArgoCD applications, to achieve this follow these restrictions when setting values for `--cluster-id` (`CLUSTER_ID`), and `--mas-instance-id` (`MAS_INSTANCE_ID`):
