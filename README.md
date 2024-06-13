@@ -393,15 +393,14 @@ The `suite.<cluster>.<instance>` application will not progress to `Healthy` unti
 
 ## Configure Maximo Application Suite Core Platform
 
-> TODO: MAS requires some core configurations to operate ...
+The MAS Suite requires configuration for DRO, SLS, and Mongo (DocumentDB) in order to progress to `Healty`. We will set these configurations up now.
 
-
-> TODO: the `mas gitops-mas-config` function is used to `upsert`, or `remove`, ....
+The `mas gitops-mas-config` function is used to `upsert`, or `remove` different types of MAS configurations to/from a list in the `/<account>/<cluster>/<instance>/ibm-mas-suite-configs.yaml` file in the **Config Repository**. Depending on the type of configuration, it may also perform other actions like creating/delete secrets from AWS Secrets Manager.
 
 
 ### Suite System Mongo Configuration
 
-> TODO: `mas gitops-config` command below will:
+The `mas gitops-config` command below  will read `<account>/<cluster>/<instance>/mongo` secret set in the previous step and use it to generate a new configuration file and push it to your **Config Repository** as `/<account>/<cluster>/<instance>/ibm-mas-suite-configs.yaml`. This YAML file is used to define all types of suite configuration. At the moment it only contains the configuration for Mongo, but we are about to add others in the following steps.
 
 ```bash
 mas gitops-mas-config \
@@ -412,8 +411,6 @@ mas gitops-mas-config \
   --mongo-provider aws
 ```
 
-This will read `<account>/<cluster>/<instance>/mongo` secret set in the previous step and use it to generate a new configuration file and push it to your **Git Config Repo** as `/<account>/<cluster>/<instance>/ibm-mas-suite-configs.yaml`. This YAML file is used to define all types of suite configuration. At the moment it only contains the configuration for Mongo, but we are about to add others in the following steps.
-
 You will see the `<inst>-mongo-system.<cluster>` application appear under `instance.<cluster>.<instance>`:
 
 ![instance root app after Mongo config](docs/screenshots/12-instance-root-mongocfg.png)
@@ -423,7 +420,7 @@ It will take a few minutes to become `Healthy`. You can safely proceed with the 
 
 ### Suite System SLS Configuration
 
-> TODO: `mas gitops-config` command below will:
+The `mas gitops-config` command below will add sls configuration to the existing `/<account>/<cluster>/<instance>/ibm-mas-suite-configs.yaml` file and push the updated file to your **Config Repository**.
 
 ```bash
 mas gitops-mas-config \
@@ -432,7 +429,8 @@ mas gitops-mas-config \
   --config-action upsert \
   --mas-config-scope system
 ```
-This will add sls configuration to the existing `/<account>/<cluster>/<instance>/ibm-mas-suite-configs.yaml` and push the updated file to your **Git Config Repo**. You will see the `<inst>-sls-system.<cluster>` application appear under `instance.<cluster>.<instance>`:
+
+You will see the `<instance>-sls-system.<cluster>` application appear under `instance.<cluster>.<instance>`:
 
 ![instance root app after SLS config](docs/screenshots/13-instance-root-slscfg.png)
 
@@ -442,7 +440,7 @@ It will take a few minutes to become `Healthy`. You can safely proceed with the 
 
 ### Suite System DRO Configuration
 
-> TODO: `mas gitops-config` command below will:
+The `mas gitops-config` command below will add dro configuration to the existing `/<account>/<cluster>/<instance>/ibm-mas-suite-configs.yaml` file and push the updated file to your **Config Repository**.
 
 ```bash
 
@@ -480,12 +478,9 @@ You can safely proceed with the next steps of this demonstration before this hap
 
 ## Configure Maximo Application Suite Core Workspace
 
-> TODO: The `mas gitops-suite-workspace` command will:
-- For the first workspace, create the `/<account>/<cluster>/<instance>/ibm-mas-suite-configs.yaml` configuration file and push it to your **Git Config Repo**. 
+The `mas gitops-suite-workspace` command is used to `upsert` and `remove` MAS workspace configurations to/from a list in the `/<account>/<cluster>/<instance>/ibm-mas-workspaces.yaml` file in your **Config Repository**.
 
-> TODO: include this? 
->- For subsequent workspaces, it will append to the `/<account>/<cluster>/<instance>/ibm-mas-suite-configs.yaml` configuration file and push the updates your **Git Config Repo**. 
-    > As of 9.0.0, MAS does not fully support multi-tenancy and so should not be used. Support has been build into the Gitops configuration for future proofing only.
+> Support for multiple workspaces has been built into MAS GitOps configuration. However, as of MAS 9.0.0, most of the MAS Applications do not support multiple workspaces. For this reason, only a single workspace should be used for now.
 
 ```bash
 mas gitops-suite-workspace \
@@ -499,11 +494,11 @@ You will see the `<workspace>-suite.<cluster>.<instance>` application appear und
 
 ![instance root app after workspace](docs/screenshots/16-instance-root-workspace.png)
 
-It will take a few minutes to become `Healthy`. The remaining steps in this demonstration cover installing the Manage Manage application and its dependencies using Gitops.  You can safely proceed with the next steps of this demonstration before this happens.
+It will take a few minutes to become `Healthy`. The remaining steps in this demonstration cover installing the Manage application and its dependencies using Gitops.  You can safely proceed with the next steps of this demonstration before this happens.
 
-## Configure a DB2 Database for the MAS Manage Application
+## Configure a DB2 Database for the Manage Application
 
-> TODO: The `mas gitops-db2u-database` is used to configure an in-cluster DB2 database for use by MAS. MAS also supports generic JDBC databases that may be on or off cluster, but this is not covered in this demonstration. 
+The `mas gitops-db2u-database` is used to configure an in-cluster DB2 database for use by MAS. MAS also supports generic JDBC databases that may be on or off cluster, but this is not covered in this guide. 
 
 DB2 makes use of persistent storage. For database, log and temporary tablespace storage, a block storage solution is recommended. For metadata and backup storage, a file storage solution is recommended. In ROSA, we can make use of the built-in `gp3` StorageClass for block storage. To provide file storage, we can install the [Amazon Elastic File System](https://docs.aws.amazon.com/efs/latest/ug/gs-step-two-create-efs-resources.html) to establish the `efs` StorageClass. You can achieve this using the `mas gitops-efs` command:
 
@@ -513,9 +508,8 @@ mas gitops-efs \
   --aws-region "${AWS_REGION}"
 ```
 
-We are now ready to run the `mas gitops-db2u-database` command, This will:
-- For the first DB2 database, create the `/<account>/<cluster>/<instance>/ibm-db2u-databases.yaml` configuration file and push it to your **Git Config Repo**. 
-- For subsequent DB2 databases, it will append to the `/<account>/<cluster>/<instance>/ibm-db2u-databases.yaml` configuration file and push the updates your **Git Config Repo**. 
+We are now ready to run the `mas gitops-db2u-database` command. This is used to upsert DB2 Database configurations to a list in the `/<account>/<cluster>/<instance>/ibm-db2u-databases.yaml` file in your **Config Repository**.
+
 
 ```bash
 
@@ -546,12 +540,11 @@ You will see the `db2-db.<cluster>.<instance>.manage` application appear under `
 
 ![instance root app after db2 database](docs/screenshots/21-instance-root-db2-database.png)
 
-> TODO: as part of this application's sync process, it will perform some additional operations:
->   - apply some configuration required by the Manage application this DB2 database will be serving.
->   - register the `<account>/<cluster>/<instance>/jdbc/${DB2_INSTANCE_NAME}/config` secret containing runtime generated information that can be securely referenced by JDBC configus (see next step)
+As part of this application's sync process, it will perform some additional operations:
+  - apply some configuration required by the Manage application this DB2 database will be serving.
+  - register the `<account>/<cluster>/<instance>/jdbc/<db2-instance-name>/config` secret containing runtime generated information that can be securely referenced by MAS JDBC configs (see next step)
 
-> 
-> These actions occur at the end of the application's sync process and are performed by the `postsync-setup-db2-*` Job. Once the Job is created, you can view its logs by opening the `db2-db.<cluster>.<instance>.manage` application, clicking on the job and navigating to the **Logs** tab:
+These actions occur at the end of the application's sync process and are performed by the `postsync-setup-db2-*` Job. Once the Job is created, you can view its logs by opening the `db2-db.<cluster>.<instance>.manage` application, clicking on the job and navigating to the **Logs** tab:
 > ![db2 database postsync](docs/screenshots/22-db2-database-postsync.png)
 
 
@@ -562,12 +555,15 @@ It will take around 20 minutes for the `db2-db.<cluster>.<instance>.manage` appl
 
 
 
-
 ## JDBC Configuration for Manage
 
-The Manage MAS Application depends on a JDBC Database. We will provide it with the details of the DB2 database that we setup in the previous step. The configuration is provided using the same mechanism we used for Mongo, SLS and BAS earlier. This time, however, we will be setting the configuration at the "Workspace-Application" scope, since this configuration is intended to be used by (and only by) the Manage Application and the workspace we are going to configure for it later.
+The Manage Application depends on a JDBC Database. We will provide it with the details of the DB2 database that we setup in the previous step. The configuration is provided using the `gitops-mas-config` command we used for Mongo, SLS and BAS earlier. 
 
-> TODO: The `gitops-mas-config` command below will:
+This time, however, we will be setting the configuration at the "Workspace-Application" (`wsapp`) scope, since this configuration is intended to be used by (and only by) the Manage Application and the workspace we are going to configure for it later.
+
+The `gitops-mas-config` command below will perform the following actions:
+  - Add JDBC configuration to the existing `/<account>/<cluster>/<instance>/ibm-mas-suite-configs.yaml` file and push the updated file to your **Config Repository**. 
+  - Generate a random username and password and register them in a new secret `<account>/<cluster>/<instance>/jdbc/<db2-instance-name>/credentials`. These credentials will be used to setup a new LDAP user in the DB2 instance by a `PreSync` hook in the JDBC config application that is about to be created.
 
 
 ```bash
@@ -582,11 +578,10 @@ mas gitops-mas-config \
   --jdbc-instance-name "db2wh-${MAS_INSTANCE_ID}-manage"
 ```
 
-You will see the `<instane>-jdbc-wsapp-<workspace>-manage.<cluster>` application appear under `instance.<cluster>.<instance>`:
+You will see the `<instance>-jdbc-wsapp-<workspace>-manage.<cluster>` application appear under `instance.<cluster>.<instance>`:
 
 ![instance root app after jdbc](docs/screenshots/23-instance-root-jdbc.png)
 
-> TODO: At the start of the application's sync process it will register an LDAP username/password in the DB2 instance.
 
 Note that this application will not begin syncing until _after_ the `db2-db.<cluster>.<instance>.manage` application has become `Healthy`. Once it begins syncing, it will itself become `Healthy` within a few minutes. You can safely proceed with the next steps of this demonstration before this happens.
 
