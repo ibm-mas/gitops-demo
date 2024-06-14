@@ -122,8 +122,8 @@ ROSA_CLUSTER_ADMIN_PASSWORD="$(cat ${ROSA_CLUSTER_DETAILS_YAML} | /usr/bin/yq .d
 oc login "${ROSA_CLUSTER_API_URL}" --username "${ROSA_CLUSTER_ADMIN_USERNAME}" --password "${ROSA_CLUSTER_ADMIN_PASSWORD}" --insecure-skip-tls-verify
 ```
 
-!!! Info
-    Note down these details in a secure location outside of the container so that you can easily recover them in the event that the container is lost.
+> [!IMPORTANT]
+> Note down these details in a secure location outside of the container so that you can easily recover them in the event that the container is lost.
 
 
 ## Setup your Config Git Repo
@@ -195,8 +195,8 @@ Since the **Account Root** application is configured with an [Automated Sync Pol
 This is the only time we will directly make changes on the cluster, with the installation of the **Account Root** application ArgoCD is ready to automatically deploy all necessary ArgoCD applications as you commit new configuration files to your **Config Repository**.
 
 
-!!! tip
-    It is safe to work through the subsequent steps of this guide before waiting for the Applications created in each step to finish syncing and progress to `Healthy`. This is possible since ArgoCD will take care of orchestrating the deployment, ensuring that each application sync is triggered only once its prerequisites have progressed to `Healthy`. See [Deployment Orchestration](https://ibm-mas.github.io/gitops/orchestration/) in the MAS GitOps documentation if you want to know more about how this works.
+> [!TIP]
+> It is safe to work through the subsequent steps of this guide before waiting for the Applications created in each step to finish syncing and progress to `Healthy`. This is possible since ArgoCD will take care of orchestrating the deployment, ensuring that each application sync is triggered only once its prerequisites have progressed to `Healthy`. See [Deployment Orchestration](https://ibm-mas.github.io/gitops/orchestration/) in the MAS GitOps documentation if you want to know more about how this works.
 
 ## Generate configuration for the Cluster Root Application
 
@@ -490,8 +490,8 @@ This completes the minimal configuration required by MAS Core; after a few minut
 
 The `mas gitops-suite-workspace` command is used to `upsert` and `remove` MAS workspace configurations to/from a list in the `/<account>/<cluster>/<instance>/ibm-mas-workspaces.yaml` file in your **Config Repository**.
 
-!!! warning
-    Support for multiple workspaces has been built into MAS GitOps configuration. However, as of MAS 9.0.0, most of the MAS Applications do not support multiple workspaces. For this reason, only a single workspace should be used for now.
+> [!CAUTION]
+> Support for multiple workspaces has been built into MAS GitOps configuration. However, as of MAS 9.0.0, most of the MAS Applications do not support multiple workspaces. For this reason, only a single workspace should be used for now.
 
 ```bash
 mas gitops-suite-workspace \
@@ -511,8 +511,8 @@ It will take a few minutes to become `Healthy`. At this point, the MAS Core Plat
 
 The `mas gitops-db2u-database` is used to configure an in-cluster DB2 database for use by MAS.
 
-!!! note
-    MAS also supports generic JDBC databases that may be on or off cluster, but this is not covered in this guide. 
+> [!NOTE]
+> MAS also supports generic JDBC databases that may be on or off cluster, but this is not covered in this guide. 
 
 DB2 makes use of persistent storage. For database, log and temporary tablespace storage, a **block** storage solution is recommended. For metadata and backup storage, a **file** storage solution is recommended. In ROSA, we can make use of the built-in `gp3` StorageClass for block storage. To provide file storage, we can install the [Amazon Elastic File System](https://docs.aws.amazon.com/efs/latest/ug/gs-step-two-create-efs-resources.html) to establish the `efs` StorageClass. You can achieve this using the `mas gitops-efs` command:
 
@@ -628,8 +628,8 @@ Now that the configuration **Manage Install** application is in place, we can es
 
 The `mas gitops-suite-app-config` is used to upsert MAS Application Workspace configurations to a list in the `/<account>/<cluster>/<instance>/ibm-mas-masapp-configs.yaml` file in your **Config Repository**.
 
-!!! warning
-    Support for multiple workspaces has been built into MAS GitOps configuration. However, as of MAS 9.0.0, most of the MAS Applications do not support multiple workspaces. For this reason, only a single workspace should be used for now.
+> [!CAUTION]
+> Support for multiple workspaces has been built into MAS GitOps configuration. However, as of MAS 9.0.0, most of the MAS Applications do not support multiple workspaces. For this reason, only a single workspace should be used for now.
 
 Before we run the command, we need to generate some configuration artifacts for Manage. These will be included in the `/<account>/<cluster>/<instance>/ibm-mas-masapp-configs.yaml` file.
 
@@ -693,8 +693,8 @@ oc get secret ${MAS_INSTANCE_ID}-credentials-superuser -n mas-${MAS_INSTANCE_ID}
 If you look around you will be able to see all of the things that we set up in the guide via GitOps.
 
 
-!!! warning
-    ArgoCD will be continuously ensuring that the state of any resources that we set up in this guide reflect the configuration in the **Config Repository**; any changes made to these resources via some other means (e.g. the MAS Admin UI or REST API) will be immediately undone by ArgoCD.
+> [!CAUTION]
+> ArgoCD will be continuously ensuring that the state of any resources that we set up in this guide reflect the configuration in the **Config Repository**; any changes made to these resources via some other means (e.g. the MAS Admin UI or REST API) will be immediately undone by ArgoCD.
     
 
 The **MAS Core Platform Workspace**:
