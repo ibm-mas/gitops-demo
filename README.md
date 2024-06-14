@@ -601,8 +601,7 @@ The **Workspace-App JDBC Configuration for Manage** application should only take
 
 Now that we have all of its prerequisites setup, we are ready to install the Manage application using Gitops.
 
-
-The `mas gitops-suite-app-install` command will:
+The `mas gitops-suite-app-install` command will generate the `/<account>/<cluster>/<instance>/ibm-mas-masapp-manage-install.yaml` file and push it to your **Config Repository**.
 
 ```bash
 mas gitops-suite-app-install \
@@ -615,22 +614,24 @@ mas gitops-suite-app-install \
   --mas-edition "essentials-maintenance"
 ```
 
-You will see the `manage.<cluster>.<instance>` application appear under `instance.<cluster>.<instance>`:
+You will see the **Manage Install** (`manage.<cluster>.<instance>`) application appear as child of the **Instance Root** application.
 
 
 ![instance root app after manage install](docs/screenshots/24-instance-root-manage-install.png)
 
 
-It will take around 10 minutes for the `manage.<cluster>.<instance>` application to become `Healthy`. You can safely proceed with the next steps of this demonstration before this happens.
+It will take around 10 minutes for the `manage.<cluster>.<instance>` application to become `Healthy`.
 
 ## Activate Manage
 
-Now that its install configuration is in place, we can establish the configuration that will activate the Manage application and create a workspace.
+Now that the configuration **Manage Install** application is in place, we can establish the configuration that will activate the Manage application and create a workspace.
 
-> TODO: The `mas gitops-suite-app-config` command will:
+The `mas gitops-suite-app-config` is used to upsert MAS Application Workspace configurations to a list in the `/<account>/<cluster>/<instance>/ibm-mas-masapp-configs.yaml` file in your **Config Repository**.
 
+!!! warning
+    Support for multiple workspaces has been built into MAS GitOps configuration. However, as of MAS 9.0.0, most of the MAS Applications do not support multiple workspaces. For this reason, only a single workspace should be used for now.
 
-First, we need to generate some configuration artefacts for Manage. These will be included in the YAML configuration file in the **Config Repository**.
+Before we run the command, we need to generate some configuration artifacts for Manage. These will be included in the `/<account>/<cluster>/<instance>/ibm-mas-masapp-configs.yaml` file.
 
 ```bash
 
@@ -646,10 +647,9 @@ bash /demo-files/manage/generate-server-bundles.sh ${MANAGE_SERVER_BUNDLES_FILE}
 MANAGE_APPWS_FILE="/mascli/manage-appws-spec.yaml"
 bash /demo-files/manage/generate-appws-spec.sh ${MANAGE_APPWS_FILE}
 
-
 ```
 
-Now we can run the `mas gitops-suite-app-config` command:
+Now we can run the `mas gitops-suite-app-config` command
 
 ```bash
 mas gitops-suite-app-config \
@@ -662,11 +662,11 @@ mas gitops-suite-app-config \
   --mas-appws-spec-yaml "${MANAGE_APPWS_FILE}"
 ```
 
-You will see the `<workspace>.manage.<cluster>.<instance>` application appear under `instance.<cluster>.<instance>`:
+You will see the **Manage Workspace** (`<workspace>.manage.<cluster>.<instance>`) application appear as a child of the **Instance Root** application.
 
 ![ArgoCD after Manage activated](docs/screenshots/25-instance-root-manage-activated.png)
 
-It will take about 2 hours for the `<workspace>.manage.<cluster>.<instance>`  application to progress to `Healthy`.
+It will take about 2 hours for the **Manage Workspace** application to progress to `Healthy`.
 
 ## Access MAS
 > TODO: tidy this up
