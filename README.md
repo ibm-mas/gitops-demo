@@ -668,46 +668,69 @@ You will see the **Manage Workspace** (`<workspace>.manage.<cluster>.<instance>`
 
 It will take about 2 hours for the **Manage Workspace** application to progress to `Healthy`.
 
-## Access MAS
-> TODO: tidy this up
+## Accessing MAS
+
+At this point, the Maximo Application Suite Core and Manage application is fully configured. 
+
+### Accessing the MAS Admin UI
+
+You can now login to the MAS Admin UI as the MAS superuser:
+
+![MAS Admin UI](docs/screenshots/17-mas-admin-ui.png)
 
 
-> TODO: At this point, MAS is fully configured and you are able to access the admin/home dashboards (https://admin.inst1.apps.masdemo1.654x.p1.openshiftapps.com/), logging in with the superuser credentials.
-> NOTE that because we are managing MAS via gitops, changes should not be made (changing configs, installing Applications etc) via the admin UI (or the REST API) as ArgoCD is responsible for managing these and making sure that they reflect the contents of the **Config Repository**.
-
-
-
-
+To obtain the address for the admin dashboard, run the following:
 ```bash
-# get admin route and open in browser
 oc get route ${MAS_INSTANCE_ID}-admin -n mas-${MAS_INSTANCE_ID}-core -ojsonpath='{.spec.host}'
+```
 
-
-# login with superuser creds, you can get them using the following commands:
+To obtain the superuser credentials, run the following:
+```bash
 oc get secret ${MAS_INSTANCE_ID}-credentials-superuser -n mas-${MAS_INSTANCE_ID}-core -ojsonpath='{.data.username}' | base64 -d
 oc get secret ${MAS_INSTANCE_ID}-credentials-superuser -n mas-${MAS_INSTANCE_ID}-core -ojsonpath='{.data.password}' | base64 -d
 ```
 
-Assign an email address new password to `MAXADMIN` user an replace their password. Make a note of the new password.
-
-Logout of superuser. Log back in as MAXADMIN using the new password.
-
-Hit **Launch** on Manage
+If you look around you will be able to see all of the things that we set up in the guide via GitOps.
 
 
+!!! warning
+    ArgoCD will be continuously ensuring that the state of any resources that we set up in this guide reflect the configuration in the **Config Repository**; any changes made to these resources via some other means (e.g. the MAS Admin UI or REST API) will be immediately undone by ArgoCD.
+    
 
-![MAS Admin UI](docs/screenshots/17-mas-admin-ui.png)
+The **MAS Core Platform Workspace**:
 
 ![MAS Admin UI - Workspace](docs/screenshots/18-mas-admin-ui-workspace.png)
 
+The MAS System Configurations:
+
 ![MAS Admin UI - Configurations](docs/screenshots/19-mas-admin-ui-configs.png)
+
+The **System SLS Configuration** details:
 
 ![MAS Admin UI - Configurations - SLS](docs/screenshots/20-mas-admin-ui-configs-sls.png)
 
+The activated Manage application:
 
 ![MAS Admin UI - Manage](docs/screenshots/27-suiteui-manage.png)
 
-![MAS Home UI - Manage](docs/screenshots/32-home-ui-apps.png)
+
+### Accessing Manage
+
+You can access the Manage application.
+
+Navigate to the **User Management** page and click on the `maxadmin` user:
+
+![MAS Admin UI - user management](docs/screenshots/30-maxadmin-user.png)
+
+Enter an email address for the user and replace the user's password with a new one and make a note of the new password:
+
+![MAS Admin UI - maxadmin](docs/screenshots/31-maxadmin-user-updatepassword.png)
+
+Log out of the MAS Admin UI and log back in as `maxadmin` using the new password. Click the "Cog" button in the top-right hand corner to navigate to the MAS Home UI:
+
+![MAS Admin UI - maxadmin](docs/screenshots/32-home-ui-apps.png)
+Hit the **Launch** button on the Manage tile and you will be taken to the Manage UI:
+
 
 ![MAS Manage UI](docs/screenshots/28-manageui.png)
 
