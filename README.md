@@ -122,7 +122,8 @@ ROSA_CLUSTER_ADMIN_PASSWORD="$(cat ${ROSA_CLUSTER_DETAILS_YAML} | /usr/bin/yq .d
 oc login "${ROSA_CLUSTER_API_URL}" --username "${ROSA_CLUSTER_ADMIN_USERNAME}" --password "${ROSA_CLUSTER_ADMIN_PASSWORD}" --insecure-skip-tls-verify
 ```
 
-Note down these details in a secure location outside of the container so that you can easily recover them in the event that the container is lost.
+!!! Info
+    Note down these details in a secure location outside of the container so that you can easily recover them in the event that the container is lost.
 
 
 ## Setup your Config Git Repo
@@ -194,9 +195,13 @@ Since the **Account Root** application is configured with an [Automated Sync Pol
 This is the only time we will directly make changes on the cluster, with the installation of the **Account Root** application ArgoCD is ready to automatically deploy all necessary ArgoCD applications as you commit new configuration files to your **Config Repository**.
 
 
-> If desired, you can safely proceed through the subsequent steps of this demonstration before waiting for the Applications created in each step to finish syncing and become healthy. This is possible since ArgoCD will take care of orchestrating the deployment, ensuring that each application sync is triggered only once its prerequisites are healthy.
+!!! tip
+    It is safe to work through the subsequent steps of this guide before waiting for the Applications created in each step to finish syncing and progress to `Healthy`. This is possible since ArgoCD will take care of orchestrating the deployment, ensuring that each application sync is triggered only once its prerequisites have progressed to `Healthy`. See [Deployment Orchestration](https://ibm-mas.github.io/gitops/orchestration/) in the MAS GitOps documentation if you want to know more about how this works.
 
 ## Generate configuration for the Cluster Root Application
+
+Now we are going to generate the first GitOps configuration files for our cluster and push them to the **Config Repository**. These configuration files will cause the **Cluster Root Application Set** to create a new **Cluster Root** Application and install two dependencies of MAS: the **Operator Catalog** and **Redhat Certificate Manager**.
+
 The `mas gitops-cluster` function will perform the following actions:
 - Create the following secrets in AWS Secrets Manager:
   - `<account>/<cluster>/ibm_entitlement`: the image pull secret for the IBM Container Registry (which contains your IBM entitlement key)
@@ -205,10 +210,6 @@ The `mas gitops-cluster` function will perform the following actions:
     - `/<account>/<cluster>/ibm-mas-cluster-base.yaml`
     - `/<account>/<cluster>/ibm-operator-catalog.yaml`
     - `/<account>/<cluster>/redhat-cert-manager.yaml`
-
-A Job in the cert manager application will register two new secrets in AWS Secrets Manager:
-  - `<account>/<cluster>/db2_default_channel`
-  - `<account>/<cluster>/cluster_domain`
 
 
 ```bash
@@ -237,6 +238,7 @@ After a few minutes, it should transition to `Healthy`. This is indicated by the
 
 ![ArgoCD Account Root Healthy](docs/screenshots/04-account-root-gitops-cluster-healthy.png)
 
+
 Open the **Cluster Root** application by clicking on the **Open application** button next to the green heart symbol. The **Cluster Root** application should have three child applications:
   - **Operator Catalog** (`operator-catalog.<cluster>`)
   - **Redhat Cert Manager** (`redhat-cert-manager.<cluster>`)
@@ -244,18 +246,17 @@ Open the **Cluster Root** application by clicking on the **Open application** bu
 
 ![ArgoCD Cluster Root](docs/screenshots/05-cluster-root.png)
 
+At this point, a Job in the **Redhat Cert Manager** application will have registered two new secrets in AWS Secrets Manager. These will be consumed by other applications that we will setup later in this guide.
+  - `<account>/<cluster>/db2_default_channel`
+  - `<account>/<cluster>/cluster_domain`
 
 
+## Generate configuration for IBM Data Reporter Operator
 
-## Generate configuration for DRO
+The IBM Data Reporter Operator is a dependency of MAS. We are going to install it now in the cluster via GitOps.
 
-The `mas gitops-dro` function  will perform the following actions:
+The `mas gitops-dro` function will generate the `/<account>/<cluster>/ibm-dro.yaml` configuration file and push it to your **Config Repository**.
 
-- Generate one new configuration file and push it to your **Config Repository**:
-  - `/<account>/<cluster>/ibm-dro.yaml`
-
-Towards the end of its synchronization process, a Job will be created in the DRO application to register a new secret in AWS Secrets Manager:
-  - `<account>/<cluster>/dro`
 
 ```bash
 mas gitops-dro --github-push
@@ -268,16 +269,13 @@ After a few minutes you should see two new applications appear as children of th
 
 ![ArgoCD Cluster Root after DRO install](docs/screenshots/06-cluster-root-dro.png)
 
-It should take less than 10 minutes for both of these applications to progress to `Healthy`. If desired, you can safely proceed with the next steps of this demonstration before this happens.
+It should take less than 10 minutes for both of these applications to progress to `Healthy`. Towards the end of its synchronization process, a Job will be created in the DRO application to register a new secret in AWS Secrets Manager `<account>/<cluster>/dro` for use by other applications that we will setup later in this guide.
 
 
 ## Generate configuration for the DB2U operator application
-Later in this demonsration, we plan to install the Manage application in our MAS instance. Manage depends on a DB2 database, and we are going to deploy this database to our cluster. Before we do this, we must install the DB2U operator:
+Later in this guide, we plan to install the Manage application in our MAS instance. Manage depends on a DB2 database, and we are going to deploy this database to our cluster. Before we do this, we must install the DB2U operator:
 
-The `mas gitops-db2u` function  will perform the following actions:
-  - Generate one new configuration file and push it to your **Config Repository**:
-    - `/<account>/<cluster>/ibm-db2u.yaml`
-
+The `mas gitops-db2u` function  will generate the `/<account>/<cluster>/ibm-db2u.yaml` and push it to your **Config Repository**.
 
 ```bash
 mas gitops-db2u --github-push
@@ -287,19 +285,16 @@ After a few minutes you should see the **DB2U** (`db2u.<cluster>`) application a
 
 ![ArgoCD Cluster Root after DB2U install](docs/screenshots/07-cluster-root-db2u.png)
 
-It should take less than 10 minutes for this application to progress to `Healthy`. You can safely proceed with the next steps of this demonstration before this happens.
+It should take less than 10 minutes for this application to progress to `Healthy`. 
 
 
 ## Setup Mongo
-IBM Maximo Application Suite and the the IBM Suite License Service depend on MongoDB. In this demonstration, we will make use of [AWS DocumentDB](https://aws.amazon.com/documentdb/). It is possible to use other MongoDB providers with MAS Gitops, but this is not covered in this guide.
+IBM Maximo Application Suite and the the IBM Suite License Service depend on MongoDB. In this guide, we will make use of [AWS DocumentDB](https://aws.amazon.com/documentdb/). It is possible to use other MongoDB providers with MAS Gitops, but this is not covered here.
 
-The `mas gitops-mongo` function  will provision a 3 node `db.t3.medium` DocumentDB instance in your AWS account. 
-
-It will also register a new secret (`<account>/<cluster>/mongo`) in AWS Secrets Manager holding all the information necessary to connect to this DocumentDB instance. This will be used by the IBM Suite License Service and any instances of IBM Maximo Application Suite installed on this cluster. 
+The `mas gitops-mongo` function  will provision a 3 node `db.t3.medium` DocumentDB instance in your AWS account. It will also register a new secret (`<account>/<cluster>/mongo`) in AWS Secrets Manager holding all the information necessary to connect to this DocumentDB instance. This will be used by the IBM Suite License Service and any instances of IBM Maximo Application Suite installed on this cluster. 
 
 
 ```bash
-
 # First, get the name of the VPC associated with your ROSA cluster
 VPC_NAME="$(rosa describe cluster --cluster=${CLUSTER_ID} -oyaml | /usr/bin/yq .infra_id)-vpc"
 
@@ -328,8 +323,7 @@ mas gitops-mongo \
 
 ## Configure License File for Maximo Application Suite Core Platform
 
-
-The `mas gitops-cluster` function will create a new secret `<account>/<cluster>/<instance>/license` in AWS Secrets Manager containing your license file for use by the MAS instance we are about to install.
+The `mas gitops-license` function will create a new secret `<account>/<cluster>/<instance>/license` in AWS Secrets Manager containing your license file for use by the MAS instance we are about to install.
 
 In a **new** terminal session, run the following command to copy your MAS License file into the MAS CLI container:
 
@@ -353,6 +347,7 @@ mas gitops-license --license-file "/mascli/license.lic"
 
 ## Install Maximo Application Suite Core Platform
 
+Now we are going to generate the first configuration files for our MAS **instance** and push them to the **Config Repository**. These configuration files will cause the **Instance Root Application Set** to create a new **Instance Root** Application and install the **IBM Suite License Service** MAS dependency,  along with the **MAS Core Platform** itself.
 
 The `mas gitops-suite` function will perform the following actions:
 
@@ -363,7 +358,7 @@ The `mas gitops-suite` function will perform the following actions:
   - `/<account>/<cluster>/<instance>/ibm-mas-suite.yaml`
   - `/<account>/<cluster>/<instance>/ibm-sls.yaml`
 
-- A Job in the SLS application will create the `<account>/<cluster>/sls` secret in AWS Secrets Manager:
+
 
 ```bash
 # NOTE: this depends on the ROSA_CLUSTER_API_URL variable set earlier in this demonstration to work
@@ -399,6 +394,8 @@ The **IBM MAS Sync Resources** and **IBM MAS Sync Jobs** applications are synced
 ![aws-docdb-add-user logs](docs/screenshots/11.5-syncjob-logs.png)
 
 Navigate back to the **Instance Root** application using the back button in your browser. After some time has passed, the **IBM Suite License Service** application will finish syncing and it should transition to `Healthy`.
+
+By this point, a Job in the SLS application will have created the `<account>/<cluster>/sls` secret in AWS Secrets Manager for use by other applications.
 
 The **MAS Core Platform** application will now begin syncing:
 
@@ -493,7 +490,8 @@ You can safely proceed with the next steps of this demonstration before this hap
 
 The `mas gitops-suite-workspace` command is used to `upsert` and `remove` MAS workspace configurations to/from a list in the `/<account>/<cluster>/<instance>/ibm-mas-workspaces.yaml` file in your **Config Repository**.
 
-> Support for multiple workspaces has been built into MAS GitOps configuration. However, as of MAS 9.0.0, most of the MAS Applications do not support multiple workspaces. For this reason, only a single workspace should be used for now.
+!!! warning
+    Support for multiple workspaces has been built into MAS GitOps configuration. However, as of MAS 9.0.0, most of the MAS Applications do not support multiple workspaces. For this reason, only a single workspace should be used for now.
 
 ```bash
 mas gitops-suite-workspace \
