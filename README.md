@@ -240,7 +240,7 @@ After a few minutes, it should transition to `Healthy`. This is indicated by the
 Open the **Cluster Root** application by clicking on the **Open application** button next to the green heart symbol. The **Cluster Root** application should have three child applications:
   - **Operator Catalog** (`operator-catalog.<cluster>`)
   - **Redhat Cert Manager** (`redhat-cert-manager.<cluster>`)
-  - **Instance Root Application Set** (`instance-apset.<cluster>`)
+  - **Instance Root Application Set** (`instance-appset.<cluster>`)
 
 ![ArgoCD Cluster Root](docs/screenshots/05-cluster-root.png)
 
@@ -380,42 +380,40 @@ mas gitops-suite \
 ```
 
 
-After a few minutes you should see a new **Instance Root Application** (`instance.<cluster>.<instance>`) appear as a child of the **Instance Root Application Set** (`instance-appset.<cluster>`) under the **Cluster Root Application** (`cluster.<cluster>`):
+After a few minutes you should see a new **Instance Root** (`instance.<cluster>.<instance>`) application appear as a child of the **Instance Root Application Set**:
 
 ![ArgoCD Cluster Root after MAS instance installation](docs/screenshots/08-cluster-root-masinstance.png)
 
-Navigate to the **Instance Root Application** by clicking its **Open Application** button. You should see four child applications:
+Navigate to the **Instance Root** application by clicking its **Open Application** button. You should see four child applications:
   - **IBM Suite License Service** (`sls.<cluster>.<instance>`),
-  - **MAS Core Suite** (`suite.<cluster>.<instance>`)
+  - **MAS Core Platform** (`suite.<cluster>.<instance>`)
   - **IBM MAS Sync Resources** (`syncres.<cluster>.<instance>`)
   - **IBM MAS Sync Jobs** (`syncjobs.<cluster>.<instance>`)
 
 
 ![instance root app after MAS instance installation](docs/screenshots/09-instance-root-01.png)
 
-The `syncres.<cluster>.<instance>` and `syncjobs.<cluster>.<instance>` applications are synced first. Once they finish syncing, a new user will have been created in your DocumentDb instance for use by IBM Maximo Application Suite and the the IBM Suite License Service. The credentials for this user will be added to the existing `<account>/<cluster>/<instance>/mongo` secret. You can see the logs of the Kubernetes Job that performed this by clicking the **Open Application** button on the syncjobs application, then clicking on the `aws-docdb-add-user` pod indicated in the screenshot below and opening its **LOGS** tab:
+The **IBM MAS Sync Resources** and **IBM MAS Sync Jobs** applications are synced first. Once they finish, a new user will have been created in your DocumentDb instance for use by IBM Maximo Application Suite and the the IBM Suite License Service. The credentials for this user will be added to the existing `<account>/<cluster>/<instance>/mongo` secret. You can see the logs of the Kubernetes Job that performed this by clicking the **Open Application** button on the **IBM MAS Sync Jobs**  application, then clicking on the `aws-docdb-add-user` pod indicated in the screenshot below and opening its **LOGS** tab:
 
 ![syncjobs app](docs/screenshots/11-syncjobs.png)
 ![aws-docdb-add-user logs](docs/screenshots/11.5-syncjob-logs.png)
 
-Navigate back to the **Instance Root Application** using the back button in your browser. After some time has passed, the `sls.<cluster>.<instance>` app will finish syncing and it should transition to `Healthy`.
+Navigate back to the **Instance Root** application using the back button in your browser. After some time has passed, the **IBM Suite License Service** application will finish syncing and it should transition to `Healthy`.
 
-The `suite.<cluster>.<instance>` application will now begin syncing:
+The **MAS Core Platform** application will now begin syncing:
 
 ![instance root app after MAS instance installation](docs/screenshots/10-instance-root-02.png)
 
-The `suite.<cluster>.<instance>` application will not progress to `Healthy` until we complete the next step to configure its connection to DRO, SLS, and DocumentDB.
+The **MAS Core Platform** application will not progress to `Healthy` until we complete the next step to configure its connection to DRO, SLS, and Mongo (DocumentDB).
 
-## Configure Maximo Application Suite Core Platform
+## Configure MAS Core Platform
 
-The MAS Suite requires configuration for DRO, SLS, and Mongo (DocumentDB) in order to progress to `Healty`. We will set these configurations up now.
-
-The `mas gitops-mas-config` function is used to `upsert`, or `remove` different types of MAS configurations to/from a list in the `/<account>/<cluster>/<instance>/ibm-mas-suite-configs.yaml` file in the **Config Repository**. Depending on the type of configuration, it may also perform other actions like creating/delete secrets from AWS Secrets Manager.
+The **MAS Core Platform** requires configuration for DRO, SLS, and Mongo (DocumentDB) in order to progress to `Healty`. We will set these configurations up now using the `mas gitops-mas-config` function. This is used to `upsert`, or `remove` different types of MAS configurations to/from a list in the `/<account>/<cluster>/<instance>/ibm-mas-suite-configs.yaml` file in the **Config Repository**. Depending on the type of configuration, it may also perform other actions like creating or deleting secrets from AWS Secrets Manager.
 
 
 ### Suite System Mongo Configuration
 
-The `mas gitops-config` command below  will read `<account>/<cluster>/<instance>/mongo` secret set in the previous step and use it to generate a new configuration file and push it to your **Config Repository** as `/<account>/<cluster>/<instance>/ibm-mas-suite-configs.yaml`. This YAML file is used to define all types of suite configuration. At the moment it only contains the configuration for Mongo, but we are about to add others in the following steps.
+The `mas gitops-config` command below will provide MAS with the details needed to communicate with the DocumentDB instance that we setup earlier. It will read `<account>/<cluster>/<instance>/mongo` secret set in the previous step and use it to generate a new configuration file and push it to your **Config Repository** as `/<account>/<cluster>/<instance>/ibm-mas-suite-configs.yaml`. This YAML file is used to define all types of suite configuration. After running the command below, it will only contain the configuration for Mongo. We are going to add others in later steps.
 
 ```bash
 mas gitops-mas-config \
@@ -426,7 +424,7 @@ mas gitops-mas-config \
   --mongo-provider aws
 ```
 
-You will see the `<inst>-mongo-system.<cluster>` application appear under `instance.<cluster>.<instance>`:
+You will see the **System Mongo Configuration** (`<instance>-mongo-system.<cluster>`) application appear as a child of the **Instance Root** application.
 
 ![instance root app after Mongo config](docs/screenshots/12-instance-root-mongocfg.png)
 
@@ -435,7 +433,7 @@ It will take a few minutes to become `Healthy`. You can safely proceed with the 
 
 ### Suite System SLS Configuration
 
-The `mas gitops-config` command below will add sls configuration to the existing `/<account>/<cluster>/<instance>/ibm-mas-suite-configs.yaml` file and push the updated file to your **Config Repository**.
+The `mas gitops-config` command below will provide MAS with the details needed to communicate with the **IBM Suite License Service** application that we setup earlier. will add SLS configuration to the existing `/<account>/<cluster>/<instance>/ibm-mas-suite-configs.yaml` file and push the updated file to your **Config Repository**.
 
 ```bash
 mas gitops-mas-config \
@@ -445,7 +443,7 @@ mas gitops-mas-config \
   --mas-config-scope system
 ```
 
-You will see the `<instance>-sls-system.<cluster>` application appear under `instance.<cluster>.<instance>`:
+You will see the **System SLS Configuration** (`<instance>-sls-system.<cluster>`) application  appear as a child of the **Instance Root** application.
 
 ![instance root app after SLS config](docs/screenshots/13-instance-root-slscfg.png)
 
@@ -455,7 +453,7 @@ It will take a few minutes to become `Healthy`. You can safely proceed with the 
 
 ### Suite System DRO Configuration
 
-The `mas gitops-config` command below will add dro configuration to the existing `/<account>/<cluster>/<instance>/ibm-mas-suite-configs.yaml` file and push the updated file to your **Config Repository**.
+The `mas gitops-config` command below will add DRO configuration to the existing `/<account>/<cluster>/<instance>/ibm-mas-suite-configs.yaml` file and push the updated file to your **Config Repository**.
 
 ```bash
 
