@@ -736,19 +736,10 @@ Hit the **Launch** button on the Manage tile and you will be taken to the Manage
 
 
 
-## Troubleshooting
+## Troubleshooting Tips
 
-If you change any values in secrets manager, you must hard-refresh and resync the appropriate ArgoCD application in order for the updates to be picked up by ArgoCD
-> TODO: screenshot
+- If you modify any values in secrets manager, you must hard-refresh and resync any ArgoCD applications that reference them in order for the updates to be picked up by ArgoCD
 
+- Some of the gitops commands create a "lock" branch in git to ernsure concurrent updates are sserialized. Although measures are taken to ensure this branch is deleted when the script exits - even in the event of an early exit due to an error, it is not always guaranteed to work. If the lock branch is left around, it may cause subsequent calls to the command to wait and timeout. If this happens, you must manually delete the branch (it will be named something like `lock.gitops***`) from your **Config Repository**
 
-Cert deprovisioning steps will hang unless using ArgoCD 2.11.0 or later. If on ArgoCD <2.11, ensure the following steps are performed manually to avoid the problem:
-> TODO
-
-Some of the gitops commands create a "lock" branch in git to ernsure concurrent updates are sserialized. Although measures are taken to ensure this branch is deleted when the script exits - even in the event of an early exit due to an error, it is not always guaranteed to work. If the lock branch is left around, it may cause subsequent calls to the command to wait and timeout. If this happens, you must manually delete the branch (it will be named something like `lock.gitops***`) from your **Config Repository**
-
-The gitops commands clone the **Config Repository** locally on startup and delete it on exit. If the script exits early it may block subsequent commands from working. If you see an error like:
-```
-fatal: destination path 'xxxxxx' already exists and is not an empty directory.
-```
-you must manually delete the local repo clone from the filesystem.
+- The gitops commands clone the **Config Repository** locally on startup and delete it on exit. If the script exits early it may block subsequent commands from working. If you see an error like `fatal: destination path 'xxxxxx' already exists and is not an empty directory.` you must manually delete the local repo clone from the filesystem.
