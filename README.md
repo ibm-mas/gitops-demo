@@ -57,30 +57,30 @@ The CLI allows arguments to be passed in both via command-line arguments and env
 
 ```bash
 
-# This will determine the name of the top-level folder in your Git Config repo
+# This will determine the name of the top-level folder in your Config Repository
 # It will also be provided in the configuration of the Account Root Application
 export ACCOUNT_ID="dev"
 
-# This will determine second-level folder in your Git Config repo.
+# This will determine second-level folder in your Config Repository.
 # It will also be included in the names of the Applications that ArgoCD will generate
 # Must be less than 15 characters (see "Naming Length Restrictions" below)
 export CLUSTER_ID="masdemo1"
 
 # This will determine the OCP cluster that ArgoCD targets.
-# In this tutorial, we are deploying a single MAS instance in the same cluster as ArgoCD.
+# In this guide, we are deploying a single MAS instance in the same cluster as ArgoCD.
 export CLUSTER_URL="https://kubernetes.default.svc"
 
-# This will determine third-level folder in your Git Config repo.
+# This will determine third-level folder in your Config Repository.
 # It will also be included in the names of the Applications that ArgoCD will generate
 # Must be less than 15 characters (see "Naming Length Restrictions" below)
 export MAS_INSTANCE_ID="inst1"
 
-# This will determine the name of the MAS Suite and Application workspace in your deployment
+# This will determine the ID and name of the MAS Suite and Application workspace in your deployment
 export MAS_WORKSPACE_ID="inst1ws1"
 export MAS_WORKSPACE_NAME="Instance 1 Workspace 1"
 
 # Details for access your AWS account and linked Redhat account.
-# These will be used to provision the ROSA cluster and create a Document DB instance
+# These will be used to provision the ROSA cluster and create a DocumentDB instance
 export AWS_ACCESS_KEY_ID="xxx"
 export AWS_SECRET_ACCESS_KEY="xxx"
 export AWS_REGION="us-east-1"
@@ -127,7 +127,9 @@ Note down these details in a secure location outside of the container so that yo
 
 ## Setup your Config Git Repo
 
-You will need to set up your own **Config Repository** in your preferred provider and supply its details to the CLI via some environment variables. This is where ArgoCD will look for configuration files that define your MAS instance, and it is where the CLI will push configuration files to. Once you have setup the repository, in your MAS cli terminal session, run the following, replacing the values as appropriate.
+You will need to set up your own **Config Repository** in your preferred provider and supply its details to the CLI via some environment variables. This is where ArgoCD will look for configuration files that define your MAS instance, and it is where the CLI will push configuration files to.
+
+Once you have setup the repository, in your MAS cli terminal session, run the following, replacing the values as appropriate.
 
 ```bash
 export GITHUB_HOST="github.com"
@@ -154,7 +156,7 @@ The `mas gitops-bootstrap` function will perform the following actions:
 - Configure Secret Manager backend for ArgoCD
 - Configure ArgoCD ServiceAccount and RBAC
 - Enable the ArgoCD Vault plugin
-- Configure ArgoCD authentication to your application repository using personal access token
+- Configure ArgoCD authentication to your **Config Repository** using ${GITHUB_PAT}
 - Patch `openshift-marketplace` and `kube-system` namespaces to allow ArgoCD to manage them
 - Add `cluster-admin` access to openshift-gitops ServiceAccount (required for managing SecurityContextContraints)
 - Create an ArgoCD project for Maximo Application Suite
@@ -179,15 +181,17 @@ ArgoCD is now available at https://openshift-gitops-server-openshift-gitops.apps
 
 You should now be able to access the ArgoCD Web UI. Open the URL in your browser, enter the username and password you see in the message above and hit **SIGN IN** (NOTE: do not click the **LOG IN VIA OPENSHIFT** button). 
 
-Once logged in, you should see the **Account Root Application** in ArgoCD:
+Once logged in, you should see the **Account Root** (`root.<account>`) application in ArgoCD:
 
 ![ArgoCD after bootstrap](docs/screenshots/01-bootstrapped.png)
 
-Click on the **Account Root Application**. It should have a single child: the **Cluster Root Application Set**. Since the **Account Root Application** is configured with an [Automated Sync Policy](https://argo-cd.readthedocs.io/en/stable/user-guide/auto_sync/), everything should either be in the process of syncing or be synced alredy.
+Click on the **Account Root** application. It should have a single child: the **Cluster Root Application Set** (`cluster-appset.<account>`).
+
+Since the **Account Root** application is configured with an [Automated Sync Policy](https://argo-cd.readthedocs.io/en/stable/user-guide/auto_sync/), everything should either be in the process of syncing or be synced already.
 
 ![Account Root Application after bootstrap](docs/screenshots/02-account-root.png)
 
-This is the only time we will directly make changes on the cluster, with the installation of the **Account Root Application** ArgoCD is ready to automatically deploy all necessary ArgoCD applications as you commit new configuration files to your **Config Repository**.
+This is the only time we will directly make changes on the cluster, with the installation of the **Account Root** application ArgoCD is ready to automatically deploy all necessary ArgoCD applications as you commit new configuration files to your **Config Repository**.
 
 
 > If desired, you can safely proceed through the subsequent steps of this demonstration before waiting for the Applications created in each step to finish syncing and become healthy. This is possible since ArgoCD will take care of orchestrating the deployment, ensuring that each application sync is triggered only once its prerequisites are healthy.
@@ -225,15 +229,18 @@ mas gitops-cluster \
   --common-services-action install
 ```
 
-It will take a few minutes for the **Cluster Root Application Set** to see the new configuration files in your **Config Repository**. Once this happens, you will see a new **Cluster Root Application** (`cluster.<cluster>`) appear as a child of the **Cluster Root Application Set**. It should begin syncing automatically, it will be in the `Progressing` state for a short while as indicated by the blue circle icon.
+It will take a few minutes for the **Cluster Root Application Set** to see the new configuration files in your **Config Repository**. Once this happens, you will see a new **Cluster Root** (`cluster.<cluster>`) application appear as a child of the **Cluster Root Application Set**. It should begin syncing automatically, it will be in the `Progressing` state for a short while as indicated by the blue circle symbol indicated by the arrow in the screenshot below:
 
 ![ArgoCD Account Root Syncing](docs/screenshots/03-account-root-gitops-cluster-syncing.png)
 
-After a few minutes, it should transition to `Healthy` as indicated by the green heart icon:
+After a few minutes, it should transition to `Healthy`. This is indicated by the blue circle symbol being replaced by a green heart symbol:
 
 ![ArgoCD Account Root Healthy](docs/screenshots/04-account-root-gitops-cluster-healthy.png)
 
-Open the `cluster.<cluster>` application by clicking on the **Open application** button indicated in the screenshot above, the **Operator Catalog** (`operator-catalog.<cluster>`), **Redhat Cert Manager** (`redhat-cert-manager.<cluster>`) applications and the **Instance Root Application Set** will be visible as children of the **Cluster Root Application** 
+Open the **Cluster Root** application by clicking on the **Open application** button next to the green heart symbol. The **Cluster Root** application should have three child applications:
+  - **Operator Catalog** (`operator-catalog.<cluster>`)
+  - **Redhat Cert Manager** (`redhat-cert-manager.<cluster>`)
+  - **Instance Root Application Set** (`instance-apset.<cluster>`)
 
 ![ArgoCD Cluster Root](docs/screenshots/05-cluster-root.png)
 
@@ -247,18 +254,21 @@ The `mas gitops-dro` function  will perform the following actions:
 - Generate one new configuration file and push it to your **Config Repository**:
   - `/<account>/<cluster>/ibm-dro.yaml`
 
-A Job in the DRO application will register a new secret in AWS Secrets Manager:
+Towards the end of its synchronization process, a Job will be created in the DRO application to register a new secret in AWS Secrets Manager:
   - `<account>/<cluster>/dro`
 
 ```bash
 mas gitops-dro --github-push
 ```
 
-After a few minutes you should see two new applications appear as children of the `cluster.<cluster>` application: The IBM DRO application (`dro.<cluster>`) itself, along with a small `ibm-dro-cleanup.<cluster>` application that contains an ArgoCD [PostDelete hook](https://argo-cd.readthedocs.io/en/stable/user-guide/resource_hooks/) necessary to ensure the `dro.<cluster>` application is cleaned up properly when its config is deleted from the **Config Repository**.
+After a few minutes you should see two new applications appear as children of the **Cluster Root** application: 
+- **IBM Data Reporter Operator** (`dro.<cluster>`)
+- **IBM DRO Cleanup** (`ibm-dro-cleanup.<cluster>`) 
+    - *contains an ArgoCD [PostDelete hook](https://argo-cd.readthedocs.io/en/stable/user-guide/resource_hooks/) necessary to ensure the **IBM Data Reporter Operator** application is cleaned up properly when its config is deleted from the **Config Repository***.
 
 ![ArgoCD Cluster Root after DRO install](docs/screenshots/06-cluster-root-dro.png)
 
-It should take less than 10 minutes for both of these application to reach Healthy/Synced status. If desired, you can safely proceed with the next steps of this demonstration before this happens.
+It should take less than 10 minutes for both of these applications to progress to `Healthy`. If desired, you can safely proceed with the next steps of this demonstration before this happens.
 
 
 ## Generate configuration for the DB2U operator application
@@ -273,7 +283,7 @@ The `mas gitops-db2u` function  will perform the following actions:
 mas gitops-db2u --github-push
 ```
 
-After a few minutes you should see the **DB2U** (`db2u.<cluster>`) application appear as a child of `cluster.<cluster>`.
+After a few minutes you should see the **DB2U** (`db2u.<cluster>`) application appear as a child of the **Cluster Root** application.
 
 ![ArgoCD Cluster Root after DB2U install](docs/screenshots/07-cluster-root-db2u.png)
 
@@ -281,9 +291,11 @@ It should take less than 10 minutes for this application to progress to `Healthy
 
 
 ## Setup Mongo
-IBM Maximo Application Suite and the the IBM Suite License Service depend on MongoDB. In this demonstration, we will make use of AWS DocumentDB (DocDB). It is possible to use other MongoDB providers with MAS Gitops, but this is not covered in this guide.
+IBM Maximo Application Suite and the the IBM Suite License Service depend on MongoDB. In this demonstration, we will make use of [AWS DocumentDB](https://aws.amazon.com/documentdb/). It is possible to use other MongoDB providers with MAS Gitops, but this is not covered in this guide.
 
-The `mas gitops-mongo` function  will provision a 3 node `db.t3.medium` DocDB instance in your AWS account. It will register a new secret (`<account>/<cluster>/mongo`) in AWS Secrets Manager holding all the information necessary to connect to this DocDB instance. This will be used by the IBM Suite License Service and any instances of IBM Maximo Application Suite installed on this cluster. 
+The `mas gitops-mongo` function  will provision a 3 node `db.t3.medium` DocumentDB instance in your AWS account. 
+
+It will also register a new secret (`<account>/<cluster>/mongo`) in AWS Secrets Manager holding all the information necessary to connect to this DocumentDB instance. This will be used by the IBM Suite License Service and any instances of IBM Maximo Application Suite installed on this cluster. 
 
 
 ```bash
@@ -299,7 +311,7 @@ aws ec2 associate-vpc-cidr-block \
 --vpc-id $VPC_ID \
 --cidr-block 10.1.0.0/23
 
-# Provision DocDB and register its details in the ${ACCOUNT_ID}/${CLUSTER_ID}/mongo secret
+# Provision DocumentDB and register its details in the ${ACCOUNT_ID}/${CLUSTER_ID}/mongo secret
 mas gitops-mongo \
   --mongo-provider "aws" \
   --aws-vpc-id "${VPC_ID}" \
@@ -317,9 +329,9 @@ mas gitops-mongo \
 ## Configure License File for Maximo Application Suite Core Platform
 
 
-The `mas gitops-cluster` function will create a new secret `<account>/<cluster>/<instance>/license` in AWS Secrets Manager containing your license file for use by MAS.
+The `mas gitops-cluster` function will create a new secret `<account>/<cluster>/<instance>/license` in AWS Secrets Manager containing your license file for use by the MAS instance we are about to install.
 
-In a new terminal session, run the following command to copy your MAS License file into the MAS CLI container:
+In a **new** terminal session, run the following command to copy your MAS License file into the MAS CLI container:
 
 ```bash
 # The path to your MAS license file (.lic extension)
@@ -334,8 +346,7 @@ docker cp "${LICENSE_FILE_PATH}" "${CLI_CONTAINER_ID}:/mascli/license.lic"
 Now go back to your MAS CLI terminal session, and run the following:
 
 ```bash
-mas gitops-license \
-  --license-file "/mascli/license.lic"
+mas gitops-license --license-file "/mascli/license.lic"
 ```
 
 
@@ -369,11 +380,15 @@ mas gitops-suite \
 ```
 
 
-After a few minutes you should see a new **Instance Root Application** appear as a child of the **Instance Root Application Set** under the **Cluster Root Application**:
+After a few minutes you should see a new **Instance Root Application** (`instance.<cluster>.<instance>`) appear as a child of the **Instance Root Application Set** (`instance-appset.<cluster>`) under the **Cluster Root Application** (`cluster.<cluster>`):
 
 ![ArgoCD Cluster Root after MAS instance installation](docs/screenshots/08-cluster-root-masinstance.png)
 
-Navigate to the **Instance Root Application** by clicking the **Open Application** button indicated in the screenshot above. You should see four child applications: `sls.<cluster>.<instance>`, `suite.<cluster>.<instance>`, `syncres.<cluster>.<instance>` and `syncjobs.<cluster>.<instance>`.
+Navigate to the **Instance Root Application** by clicking its **Open Application** button. You should see four child applications:
+  - **IBM Suite License Service** (`sls.<cluster>.<instance>`),
+  - **MAS Core Suite** (`suite.<cluster>.<instance>`)
+  - **IBM MAS Sync Resources** (`syncres.<cluster>.<instance>`)
+  - **IBM MAS Sync Jobs** (`syncjobs.<cluster>.<instance>`)
 
 
 ![instance root app after MAS instance installation](docs/screenshots/09-instance-root-01.png)
@@ -617,7 +632,7 @@ Now that its install configuration is in place, we can establish the configurati
 > TODO: The `mas gitops-suite-app-config` command will:
 
 
-First, we need to generate some configuration artefacts for Manage. These will be included in the YAML configuration file in the **Git Config Repo**.
+First, we need to generate some configuration artefacts for Manage. These will be included in the YAML configuration file in the **Config Repository**.
 
 ```bash
 
@@ -660,7 +675,7 @@ It will take about 2 hours for the `<workspace>.manage.<cluster>.<instance>`  ap
 
 
 > TODO: At this point, MAS is fully configured and you are able to access the admin/home dashboards (https://admin.inst1.apps.masdemo1.654x.p1.openshiftapps.com/), logging in with the superuser credentials.
-> NOTE that because we are managing MAS via gitops, changes should not be made (changing configs, installing Applications etc) via the admin UI (or the REST API) as ArgoCD is responsible for managing these and making sure that they reflect the contents of the **Git Config Repo**.
+> NOTE that because we are managing MAS via gitops, changes should not be made (changing configs, installing Applications etc) via the admin UI (or the REST API) as ArgoCD is responsible for managing these and making sure that they reflect the contents of the **Config Repository**.
 
 
 
@@ -709,9 +724,9 @@ If you change any values in secrets manager, you must hard-refresh the appropria
 Cert deprovisioning steps will hang unless using ArgoCD 2.11.0 or later. If on ArgoCD <2.11, ensure the following steps are performed manually to avoid the problem:
 > TODO
 
-Some of the gitops commands create a "lock" branch in git to ernsure concurrent updates are sserialized. Although measures are taken to ensure this branch is deleted when the script exits - even in the event of an early exit due to an error, it is not always guaranteed to work. If the lock branch is left around, it may cause subsequent calls to the command to wait and timeout. If this happens, you must manually delete the branch (it will be named something like `lock.gitops***`) from your **Git Config Repo**
+Some of the gitops commands create a "lock" branch in git to ernsure concurrent updates are sserialized. Although measures are taken to ensure this branch is deleted when the script exits - even in the event of an early exit due to an error, it is not always guaranteed to work. If the lock branch is left around, it may cause subsequent calls to the command to wait and timeout. If this happens, you must manually delete the branch (it will be named something like `lock.gitops***`) from your **Config Repository**
 
-The gitops commands clone the **Git Config Repo** locally on startup and delete it on exit. If the script exits early it may block subsequent commands from working. If you see an error like:
+The gitops commands clone the **Config Repository** locally on startup and delete it on exit. If the script exits early it may block subsequent commands from working. If you see an error like:
 ```
 fatal: destination path 'xxxxxx' already exists and is not an empty directory.
 ```
