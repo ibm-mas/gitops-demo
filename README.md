@@ -410,7 +410,7 @@ The **MAS Core Platform** requires configuration for DRO, SLS, and Mongo (Docume
 
 ### Suite System Mongo Configuration
 
-The `mas gitops-config` command below will provide MAS with the details needed to communicate with the DocumentDB instance that we setup earlier. It will read `<account>/<cluster>/<instance>/mongo` secret set in the previous step and use it to generate a new configuration file and push it to your **Config Repository** as `/<account>/<cluster>/<instance>/ibm-mas-suite-configs.yaml`. This YAML file is used to define all types of suite configuration. After running the command below, it will only contain the configuration for Mongo. We are going to add others in later steps.
+The `mas gitops-config` command below will provide MAS with the details needed to communicate with the DocumentDB instance that we setup earlier. It will read `<account>/<cluster>/<instance>/mongo` secret set in the previous step and use it to generate a new configuration file and push it to your **Config Repository** as `/<account>/<cluster>/<instance>/ibm-mas-suite-configs.yaml`. This YAML file is used to define all types of suite configuration. After running the command below, the will only contain the configuration for Mongo. We are going to add other types of configuration in later steps.
 
 ```bash
 mas gitops-mas-config \
@@ -425,7 +425,7 @@ You will see the **System Mongo Configuration** (`<instance>-mongo-system.<clust
 
 ![instance root app after Mongo config](docs/screenshots/12-instance-root-mongocfg.png)
 
-It will take a few minutes to become `Healthy`. You can safely proceed with the next steps of this demonstration before this happens.
+It will take a few minutes to become `Healthy`.
 
 
 ### Suite System SLS Configuration
@@ -440,17 +440,17 @@ mas gitops-mas-config \
   --mas-config-scope system
 ```
 
-You will see the **System SLS Configuration** (`<instance>-sls-system.<cluster>`) application  appear as a child of the **Instance Root** application.
+You will see the **System SLS Configuration** (`<instance>-sls-system.<cluster>`) application appear as a child of the **Instance Root** application.
 
 ![instance root app after SLS config](docs/screenshots/13-instance-root-slscfg.png)
 
 
-It will take a few minutes to become `Healthy`. You can safely proceed with the next steps of this demonstration before this happens.
+It will take a few minutes to become `Healthy`.
 
 
 ### Suite System DRO Configuration
 
-The `mas gitops-config` command below will add DRO configuration to the existing `/<account>/<cluster>/<instance>/ibm-mas-suite-configs.yaml` file and push the updated file to your **Config Repository**.
+The `mas gitops-config` command below will provide MAS with the details needed to communicate with the **IBM Data Reporter Operator** that we installed on the cluster. It will add DRO configuration to the existing `/<account>/<cluster>/<instance>/ibm-mas-suite-configs.yaml` file and push the updated file to your **Config Repository**.
 
 ```bash
 
@@ -475,15 +475,15 @@ mas gitops-mas-config \
 ```
 
 
-You will see the `<instance>-bas-system.<cluster>` application appear under `instance.<cluster>.<instance>`:
+You will see the **System BAS Configuration** (`<instance>-bas-system.<cluster>`) application appear as a child of the **Instance Root** application.
 
 ![instance root app after BAS confign](docs/screenshots/14-instance-root-bascfg.png)
 
-It will take a few minutes to become `Healthy`. This completes the minimal configuration required by MAS Core; after a few minutes, the `suite.<cluster>.<instance>` application should become `Healthy`:
+It will take a few minutes to become `Healthy`. 
+
+This completes the minimal configuration required by MAS Core; after a few minutes, the **MAS Core Platform** application should become `Healthy`.
 
 ![instance root app after Suite healthy](docs/screenshots/15-instance-root-suitehealthy.png)
-
-You can safely proceed with the next steps of this demonstration before this happens.
 
 
 ## Configure Maximo Application Suite Core Workspace
@@ -501,17 +501,20 @@ mas gitops-suite-workspace \
   --mas-workspace-name "${MAS_WORKSPACE_NAME}"
 ```
 
-You will see the `<workspace>-suite.<cluster>.<instance>` application appear under `instance.<cluster>.<instance>`:
+You will see the **MAS Core Platform Workspace** (`<workspace>-suite.<cluster>.<instance>`) application appear as a child of the **Instance Root** application.
 
 ![instance root app after workspace](docs/screenshots/16-instance-root-workspace.png)
 
-It will take a few minutes to become `Healthy`. The remaining steps in this demonstration cover installing the Manage application and its dependencies using Gitops.  You can safely proceed with the next steps of this demonstration before this happens.
+It will take a few minutes to become `Healthy`. At this point, the MAS Core Platform is up and running and you should be able to sign into the MAS user interface using the superuser credentials. The remaining steps in this demonstration cover installing the Manage application and its dependencies using Gitops.  
 
 ## Configure a DB2 Database for the Manage Application
 
-The `mas gitops-db2u-database` is used to configure an in-cluster DB2 database for use by MAS. MAS also supports generic JDBC databases that may be on or off cluster, but this is not covered in this guide. 
+The `mas gitops-db2u-database` is used to configure an in-cluster DB2 database for use by MAS.
 
-DB2 makes use of persistent storage. For database, log and temporary tablespace storage, a block storage solution is recommended. For metadata and backup storage, a file storage solution is recommended. In ROSA, we can make use of the built-in `gp3` StorageClass for block storage. To provide file storage, we can install the [Amazon Elastic File System](https://docs.aws.amazon.com/efs/latest/ug/gs-step-two-create-efs-resources.html) to establish the `efs` StorageClass. You can achieve this using the `mas gitops-efs` command:
+!!! note
+    MAS also supports generic JDBC databases that may be on or off cluster, but this is not covered in this guide. 
+
+DB2 makes use of persistent storage. For database, log and temporary tablespace storage, a **block** storage solution is recommended. For metadata and backup storage, a **file** storage solution is recommended. In ROSA, we can make use of the built-in `gp3` StorageClass for block storage. To provide file storage, we can install the [Amazon Elastic File System](https://docs.aws.amazon.com/efs/latest/ug/gs-step-two-create-efs-resources.html) to establish the `efs` StorageClass. You can achieve this using the `mas gitops-efs` command:
 
 ```bash
 mas gitops-efs \
@@ -547,22 +550,20 @@ mas gitops-db2u-database \
   --mas-app-id "manage"
 ```
 
-You will see the `db2-db.<cluster>.<instance>.manage` application appear under `instance.<cluster>.<instance>`:
+You will see the **DB2 Database** (`db2-db.<cluster>.<instance>.manage`) application appear as a child of the **Instance Root** application.
 
 ![instance root app after db2 database](docs/screenshots/21-instance-root-db2-database.png)
 
-As part of this application's sync process, it will perform some additional operations:
-  - apply some configuration required by the Manage application this DB2 database will be serving.
-  - register the `<account>/<cluster>/<instance>/jdbc/<db2-instance-name>/config` secret containing runtime generated information that can be securely referenced by MAS JDBC configs (see next step)
+As part of the  **DB2 Database** application's sync process, it will perform some additional operations:
+  - Apply some configuration to the DB2 Database required by the Manage application will be using it.
+  - Register the `<account>/<cluster>/<instance>/jdbc/<db2-instance-name>/config` secret containing runtime generated information that can be securely referenced by MAS JDBC configs that we are going to create in the next step of this guide.
 
-These actions occur at the end of the application's sync process and are performed by the `postsync-setup-db2-*` Job. Once the Job is created, you can view its logs by opening the `db2-db.<cluster>.<instance>.manage` application, clicking on the job and navigating to the **Logs** tab:
+These actions occur at the end of the application's sync process and are performed by the `postsync-setup-db2-*` Job. Once the Job is created, you can view its logs by opening the **DB2 Database** (`db2-db.<cluster>.<instance>.manage`)application, clicking on the job and navigating to the **Logs** tab:
 > ![db2 database postsync](docs/screenshots/22-db2-database-postsync.png)
 
 
 
-It will take around 20 minutes for the `db2-db.<cluster>.<instance>.manage` application to become `Healthy`,  but you can safely proceed with the next steps of this demonstration before this happens.
-
-
+It will take around 20 minutes for the **DB2 Database** application to become `Healthy`.
 
 
 
@@ -589,18 +590,19 @@ mas gitops-mas-config \
   --jdbc-instance-name "db2wh-${MAS_INSTANCE_ID}-manage"
 ```
 
-You will see the `<instance>-jdbc-wsapp-<workspace>-manage.<cluster>` application appear under `instance.<cluster>.<instance>`:
+You will see the **Workspace-App JDBC Configuration for Manage** (`<instance>-jdbc-wsapp-<workspace>-manage.<cluster>`) application appear as a child of the **Instance Root** appliction.
 
 ![instance root app after jdbc](docs/screenshots/23-instance-root-jdbc.png)
 
-
-Note that this application will not begin syncing until _after_ the `db2-db.<cluster>.<instance>.manage` application has become `Healthy`. Once it begins syncing, it will itself become `Healthy` within a few minutes. You can safely proceed with the next steps of this demonstration before this happens.
+The **Workspace-App JDBC Configuration for Manage** application should only take a few minute to sync, but bear in mind that it will not begin syncing until _after_ the **DB2 Database** application has progressed to `Healthy`.
 
 
 ## Install Manage
 
-Now that we have all of its prerequisites setup, we are ready to install the Manage application using Gitops. 
-> TODO: The `mas gitops-suite-app-install` command will:
+Now that we have all of its prerequisites setup, we are ready to install the Manage application using Gitops.
+
+
+The `mas gitops-suite-app-install` command will:
 
 ```bash
 mas gitops-suite-app-install \
@@ -711,9 +713,9 @@ Hit **Launch** on Manage
 
 
 
-## Known Issues / Troubleshooting
+## Troubleshooting
 
-If you change any values in secrets manager, you must hard-refresh the appropriate ArgoCD application in order for the updates to be picked up by ArgoCD
+If you change any values in secrets manager, you must hard-refresh and resync the appropriate ArgoCD application in order for the updates to be picked up by ArgoCD
 > TODO: screenshot
 
 
