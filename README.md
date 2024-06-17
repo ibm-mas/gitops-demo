@@ -46,9 +46,8 @@ git clone git@github.com:ibm-mas/gitops-demo --branch 002 ${GITOPS_DEMO_PATH}
 
 Now run the version of the CLI image used in this demonstration, mounting the files from the gitops-demo repo as follows:
 
-> TODO: update cli image version
 ```bash
-docker run -v $GITOPS_DEMO_PATH/files:/demo-files -ti --pull always quay.io/ibmmas/cli:9.0.0-pre.gitops
+docker run -v $GITOPS_DEMO_PATH/files:/demo-files -ti --pull always quay.io/ibmmas/cli:9.4.0-pre.gitopsdemo2
 ```
 
 ## Setup common environment variables
