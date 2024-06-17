@@ -159,7 +159,7 @@ The `mas gitops-bootstrap` function will perform the following actions:
 - Enable the ArgoCD Vault plugin
 - Configure ArgoCD authentication to your **Config Repository** using ${GITHUB_PAT}
 - Patch `openshift-marketplace` and `kube-system` namespaces to allow ArgoCD to manage them
-- Add `cluster-admin` access to openshift-gitops ServiceAccount (required for managing SecurityContextContraints)
+- Add `cluster-admin` access to openshift-gitops ServiceAccount (required for managing SecurityContextConstraints)
 - Create an ArgoCD project for Maximo Application Suite
 - Create the Maximo Application Suite **Account Root Application**
 
@@ -351,7 +351,7 @@ Now we are going to generate the first configuration files for our MAS **instanc
 
 The `mas gitops-suite` function will perform the following actions:
 
-- Create the `<account>/<cluster>/<instance>/mongo` secret in AWS Secrets Manager. This contains the connection details of the DocumentDB instance copied from the `<account>/<cluster>/mongo` secret. During the sychronization process, a Job is run that creates a user in DocumentDB for the MAS instance and adds the user's username and password to this secret.
+- Create the `<account>/<cluster>/<instance>/mongo` secret in AWS Secrets Manager. This contains the connection details of the DocumentDB instance copied from the `<account>/<cluster>/mongo` secret. During the synchronization process, a Job is run that creates a user in DocumentDB for the MAS instance and adds the user's username and password to this secret.
 
 - Generate three new configuration files and push them to your **Config Repository**:
   - `/<account>/<cluster>/<instance>/ibm-mas-instance-base.yaml`
@@ -405,7 +405,7 @@ The **MAS Core Platform** application will not progress to `Healthy` until we co
 
 ## Configure MAS Core Platform
 
-The **MAS Core Platform** requires configuration for DRO, SLS, and Mongo (DocumentDB) in order to progress to `Healty`. We will set these configurations up now using the `mas gitops-mas-config` function. This is used to `upsert`, or `remove` different types of MAS configurations to/from a list in the `/<account>/<cluster>/<instance>/ibm-mas-suite-configs.yaml` file in the **Config Repository**. Depending on the type of configuration, it may also perform other actions like creating or deleting secrets from AWS Secrets Manager.
+The **MAS Core Platform** requires configuration for DRO, SLS, and Mongo (DocumentDB) in order to progress to `Healthy`. We will set these configurations up now using the `mas gitops-mas-config` function. This is used to `upsert`, or `remove` different types of MAS configurations to/from a list in the `/<account>/<cluster>/<instance>/ibm-mas-suite-configs.yaml` file in the **Config Repository**. Depending on the type of configuration, it may also perform other actions like creating or deleting secrets from AWS Secrets Manager.
 
 
 ### Suite System Mongo Configuration
@@ -477,7 +477,7 @@ mas gitops-mas-config \
 
 You will see the **System BAS Configuration** (`<instance>-bas-system.<cluster>`) application appear as a child of the **Instance Root** application.
 
-![instance root app after BAS confign](docs/screenshots/14-instance-root-bascfg.png)
+![instance root app after BAS config](docs/screenshots/14-instance-root-bascfg.png)
 
 It will take a few minutes to become `Healthy`. 
 
@@ -590,7 +590,7 @@ mas gitops-mas-config \
   --jdbc-instance-name "db2wh-${MAS_INSTANCE_ID}-manage"
 ```
 
-You will see the **Workspace-App JDBC Configuration for Manage** (`<instance>-jdbc-wsapp-<workspace>-manage.<cluster>`) application appear as a child of the **Instance Root** appliction.
+You will see the **Workspace-App JDBC Configuration for Manage** (`<instance>-jdbc-wsapp-<workspace>-manage.<cluster>`) application appear as a child of the **Instance Root** application.
 
 ![instance root app after jdbc](docs/screenshots/23-instance-root-jdbc.png)
 
