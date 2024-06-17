@@ -1,6 +1,6 @@
 # Maximo Application Suite GitOps Demonstration
 
-The following is a step-by-step guide that you can work through to install MAS on AWS/ROSA via GitOps using the Helm Charts in [ibm-mas/gitops](https://github.com/ibm-mas/gitops) and the MAS CLI. We recommend that you review the [ibm-mas-gitops documentation](https://ibm-mas.github.io/gitops) before following the steps in this guide. 
+The following is a step-by-step guide that you can work through to install MAS on AWS/ROSA via GitOps using the Helm Charts in the version 1.0.0 release of [ibm-mas/gitops](https://github.com/ibm-mas/gitops) and the MAS CLI. We recommend that you review the [ibm-mas-gitops documentation](https://ibm-mas.github.io/gitops) before following the steps in this guide. 
 
 Please note:
 - You do not *need* to use the MAS CLI to use our Helm Charts, but at this stage of development there is no documentation in place for this. 
@@ -165,7 +165,7 @@ The `mas gitops-bootstrap` function will perform the following actions:
 ```bash
 mas gitops-bootstrap \
   --account-id "${ACCOUNT_ID}" \
-  --app-revision demo2 \
+  --app-revision "1.0.0" \
   --sm-aws-secret-region "${SM_AWS_REGION}" \
   --sm-aws-secret-key "${SM_AWS_SECRET_ACCESS_KEY}" \
   --sm-aws-access-key "${SM_AWS_ACCESS_KEY_ID}" \
