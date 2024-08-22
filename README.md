@@ -1,6 +1,6 @@
 # Maximo Application Suite GitOps Demonstration
 
-The following is a step-by-step guide that you can work through to install MAS on AWS/ROSA via GitOps using the Helm Charts in the version 1.0.0 release of [ibm-mas/gitops](https://github.com/ibm-mas/gitops) and the MAS CLI. We recommend that you review the [ibm-mas-gitops documentation](https://ibm-mas.github.io/gitops) before following the steps in this guide. 
+The following is a step-by-step guide that you can work through to install MAS on AWS/ROSA via GitOps using the Helm Charts in the version 1.0.0 release of [ibm-mas/gitops](https://github.com/ibm-mas/gitops) and the MAS CLI. We recommend that you review the [ibm-mas-gitops 1.0 documentation](https://ibm-mas.github.io/gitops/1.0/) before following the steps in this guide. 
 
 Please note:
 - You do not *need* to use the MAS CLI to use our Helm Charts, but at this stage of development there is no documentation in place for this. 
@@ -193,9 +193,8 @@ Since the **Account Root** application is configured with an [Automated Sync Pol
 
 This is the only time we will directly make changes on the cluster, with the installation of the **Account Root** application ArgoCD is ready to automatically deploy all necessary ArgoCD applications as you commit new configuration files to your **Config Repository**.
 
-
 > [!TIP]
-> It is safe to work through the subsequent steps of this guide before waiting for the Applications created in each step to finish syncing and progress to `Healthy`. This is possible since ArgoCD will take care of orchestrating the deployment, ensuring that each application sync is triggered only once its prerequisites have progressed to `Healthy`. See [Deployment Orchestration](https://ibm-mas.github.io/gitops/orchestration/) in the MAS GitOps documentation if you want to know more about how this works.
+> It is safe to work through the subsequent steps of this guide before waiting for the Applications created in each step to finish syncing and progress to `Healthy`. This is possible since ArgoCD will take care of orchestrating the deployment, ensuring that each application sync is triggered only once its prerequisites have progressed to `Healthy`. See [Deployment Orchestration](https://ibm-mas.github.io/gitops/1.0/orchestration/) in the MAS GitOps documentation if you want to know more about how this works.
 
 ## Generate configuration for the Cluster Root Application
 
