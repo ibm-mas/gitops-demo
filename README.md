@@ -1,6 +1,6 @@
 # Maximo Application Suite GitOps Demonstration
 
-The following is a step-by-step guide that you can work through to install MAS 9.1.x on AWS/ROSA via GitOps using the Helm Charts in the version 7.5.0 release of [ibm-mas/gitops](https://github.com/ibm-mas/gitops) and the MAS CLI. We recommend that you review the [ibm-mas-gitops 7.5 documentation](https://ibm-mas.github.io/gitops/7.5/) before following the steps in this guide.
+The following is a step-by-step guide that you can work through to install MAS 9.1.x on AWS/ROSA via GitOps using the Helm Charts in the latest version release of [ibm-mas/gitops](https://github.com/ibm-mas/gitops) and the MAS CLI. We recommend that you review the [ibm-mas-gitops documentation](https://ibm-mas.github.io/gitops/main/) before following the steps in this guide.
 
 > **Alternative Deployment Approach**: If you need to separate cluster-level and application-level administrative responsibilities, see the [GitOps with Cluster-Admin and Application-Admin Roles Guide](docs/admin-roles-guide.md). This approach is recommended for enterprise environments requiring stricter role-based access control.
 
