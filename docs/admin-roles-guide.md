@@ -173,8 +173,7 @@ mas gitops-cluster \
   --icr-username "${ICR_USERNAME}" \
   --icr-password "${ICR_PASSWORD}" \
   --catalog-version v9-260129-amd64 \
-  --catalog-image icr.io/cpopen/ibm-maximo-operator-catalog \
-  --catalog-action install
+  --catalog-image icr.io/cpopen/ibm-maximo-operator-catalog
 ```
 
 #### IBM Data Reporter Operator
