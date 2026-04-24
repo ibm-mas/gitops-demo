@@ -1,12 +1,14 @@
 # Maximo Application Suite GitOps Demonstration
 
-The following is a step-by-step guide that you can work through to install MAS on AWS/ROSA via GitOps using the Helm Charts in the version 1.0.0 release of [ibm-mas/gitops](https://github.com/ibm-mas/gitops) and the MAS CLI. We recommend that you review the [ibm-mas-gitops 1.0 documentation](https://ibm-mas.github.io/gitops/1.0/) before following the steps in this guide. 
+The following is a step-by-step guide that you can work through to install MAS 9.1.x on AWS/ROSA via GitOps using the Helm Charts in the version 7.5.0 release of [ibm-mas/gitops](https://github.com/ibm-mas/gitops) and the MAS CLI. We recommend that you review the [ibm-mas-gitops 7.5 documentation](https://ibm-mas.github.io/gitops/7.5/) before following the steps in this guide.
+
+> **Alternative Deployment Approach**: If you need to separate cluster-level and application-level administrative responsibilities, see the [GitOps with Cluster-Admin and Application-Admin Roles Guide](docs/admin-roles-guide.md). This approach is recommended for enterprise environments requiring stricter role-based access control.
 
 Please note:
-- You do not *need* to use the MAS CLI to use our Helm Charts, but at this stage of development there is no documentation in place for this. 
+- You do not *need* to use the MAS CLI to use our Helm Charts, however the CLI will ensure the correct files are added to the github repo and that secrets are added to Secrets Manager.
 - It is possible to use other cloud providers, but this has not been tested sufficiently for demonstration yet.
 - It is possible for ArgoCD to run on one cluster, managing MAS instances across multiple other clusters. In the interests of simplicity, in this guide we will restrict the deployment to a single MAS Instance running in the same cluster as ArgoCD.
-- For brevity, we only install the **Manage** MAS application here, but all of the MAS applications are supported.
+- This guide demonstrates installing the **Manage**, **Facilities**, and **Visual Inspection** MAS applications, but all MAS applications are supported.
 
 The process boils down to the following steps:
   - Provision a ROSA cluster
@@ -41,13 +43,13 @@ The final step is achieved here using various `gitops` functions provided by the
 If you haven't already, clone this repository to your local machine. This is so we can mount some additional configuration files and scripts from this repository into the MAS CLI container for use later on.
 ```bash
 GITOPS_DEMO_PATH=~/gitops-demo
-git clone git@github.com:ibm-mas/gitops-demo --branch 002 ${GITOPS_DEMO_PATH}
+git clone git@github.com:ibm-mas/gitops-demo --branch 003 ${GITOPS_DEMO_PATH}
 ```
 
 Now run the version of the CLI image used in this demonstration, mounting the files from the gitops-demo repo as follows:
 
 ```bash
-docker run -v $GITOPS_DEMO_PATH/files:/demo-files -ti --pull always quay.io/ibmmas/cli:9.4.0-pre.gitopsdemo2
+docker run -v $GITOPS_DEMO_PATH/files:/demo-files -ti --pull always quay.io/ibmmas/cli:20.1.1
 ```
 
 ## Setup common environment variables
@@ -157,7 +159,6 @@ The `mas gitops-bootstrap` function will perform the following actions:
 - Configure ArgoCD ServiceAccount and RBAC
 - Enable the ArgoCD Vault plugin
 - Configure ArgoCD authentication to your **Config Repository** using ${GITHUB_PAT}
-- Patch `openshift-marketplace` and `kube-system` namespaces to allow ArgoCD to manage them
 - Add `cluster-admin` access to openshift-gitops ServiceAccount (required for managing SecurityContextConstraints)
 - Create an ArgoCD project for Maximo Application Suite
 - Create the Maximo Application Suite **Account Root Application**
@@ -165,7 +166,7 @@ The `mas gitops-bootstrap` function will perform the following actions:
 ```bash
 mas gitops-bootstrap \
   --account-id "${ACCOUNT_ID}" \
-  --app-revision "1.0.0" \
+  --app-revision "7.5.0" \
   --sm-aws-secret-region "${SM_AWS_REGION}" \
   --sm-aws-secret-key "${SM_AWS_SECRET_ACCESS_KEY}" \
   --sm-aws-access-key "${SM_AWS_ACCESS_KEY_ID}" \
@@ -221,11 +222,9 @@ mas gitops-cluster \
   --cluster-url "${CLUSTER_URL}" \
   --icr-username "${ICR_USERNAME}" \
   --icr-password "${ICR_PASSWORD}" \
-  --catalog-version v8-240430-amd64 \
+  --catalog-version v9-260129-amd64 \
   --catalog-image icr.io/cpopen/ibm-maximo-operator-catalog \
-  --catalog-action install \
-  --common-services-channel v3.23 \
-  --common-services-action install
+  --catalog-action install
 ```
 
 It will take a few minutes for the **Cluster Root Application Set** to see the new configuration files in your **Config Repository**. Once this happens, you will see a new **Cluster Root** (`cluster.<cluster>`) application appear as a child of the **Cluster Root Application Set**. It should begin syncing automatically, it will be in the `Progressing` state for a short while as indicated by the blue circle symbol indicated by the arrow in the screenshot below:
@@ -271,12 +270,12 @@ It should take less than 10 minutes for both of these applications to progress t
 
 
 ## Generate configuration for the DB2U operator application
-Later in this guide, we plan to install the Manage application in our MAS instance. Manage depends on a DB2 database, and we are going to deploy this database to our cluster. Before we do this, we must install the DB2U operator:
+Later in this guide, we plan to install the Manage and Facilities applications in our MAS instance. Both applications depend on DB2 databases, and we are going to deploy these databases to our cluster. Before we do this, we must install the DB2U operator:
 
 The `mas gitops-db2u` function  will generate the `/<account>/<cluster>/ibm-db2u.yaml` and push it to your **Config Repository**.
 
 ```bash
-mas gitops-db2u --github-push
+mas gitops-db2u --github-push --db2-channel v110509.0
 ```
 
 After a few minutes you should see the **DB2U** (`db2u.<cluster>`) application appear as a child of the **Cluster Root** application.
@@ -287,29 +286,35 @@ It should take less than 10 minutes for this application to progress to `Healthy
 
 
 ## Setup Mongo
-IBM Maximo Application Suite and the the IBM Suite License Service depend on MongoDB. In this guide, we will make use of [AWS DocumentDB](https://aws.amazon.com/documentdb/). It is possible to use other MongoDB providers with MAS Gitops, but this is not covered here.
+IBM Maximo Application Suite and the IBM Suite License Service depend on MongoDB. The `mas gitops-mongo` function supports two MongoDB provider options:
 
-The `mas gitops-mongo` function  will provision a 3 node `db.t3.medium` DocumentDB instance in your AWS account. It will also register a new secret (`<account>/<cluster>/mongo`) in AWS Secrets Manager holding all the information necessary to connect to this DocumentDB instance. This will be used by the IBM Suite License Service and any instances of IBM Maximo Application Suite installed on this cluster. 
+1. **AWS DocumentDB** - Automatically provisions a DocumentDB instance in your AWS account
+2. **External MongoDB (YAML)** - Connects to an existing MongoDB instance using a YAML configuration file
 
+Both options register connection details in AWS Secrets Manager (`<account>/<cluster>/mongo`) for use by the IBM Suite License Service and MAS instances.
+
+### Option 1: Provision AWS DocumentDB
+
+This option provisions a 3-node `db.t3.medium` DocumentDB instance in your AWS account.
 
 ```bash
 # First, get the name of the VPC associated with your ROSA cluster
 VPC_NAME="$(rosa describe cluster --cluster=${CLUSTER_ID} -oyaml | /usr/bin/yq .infra_id)-vpc"
 
-# Use the VPC_NAME this to get its ID
+# Use the VPC_NAME to get its ID
 export VPC_ID=$(aws ec2 describe-vpcs --filters '[{"Name": "tag:Name", "Values": ["'${VPC_NAME}'"]}]' --output yaml | yq -r '.Vpcs[].VpcId')
 
 # Associate a new CIDR block with the VPC. We will use this to assign IP addresses to DocDB.
 aws ec2 associate-vpc-cidr-block \
---vpc-id $VPC_ID \
---cidr-block 10.1.0.0/23
+  --vpc-id $VPC_ID \
+  --cidr-block 10.1.0.0/23
 
 # Provision DocumentDB and register its details in the ${ACCOUNT_ID}/${CLUSTER_ID}/mongo secret
 mas gitops-mongo \
   --mongo-provider "aws" \
   --aws-vpc-id "${VPC_ID}" \
   --aws-docdb-cluster-name "docdb-${CLUSTER_ID}" \
-  --aws-docdb-ingress-cidr "10.0.0.0/16"  \
+  --aws-docdb-ingress-cidr "10.0.0.0/16" \
   --aws-docdb-egress-cidr "10.0.0.0/16" \
   --aws-docdb-cidr-az1 "10.1.0.0/27" \
   --aws-docdb-cidr-az2 "10.1.0.32/27" \
@@ -318,6 +323,79 @@ mas gitops-mongo \
   --aws-docdb-instance-number 3 \
   --aws-docdb-engine-version "5.0.0"
 ```
+
+### Option 2: Use External MongoDB with YAML Configuration
+
+This option allows you to connect to an existing MongoDB instance (e.g., IBM Cloud Databases for MongoDB) by providing a YAML configuration file.
+
+#### Step 1: Create MongoDB Configuration YAML
+
+Create a YAML file (e.g., `mongo-config.yaml`) with your MongoDB connection details:
+
+```yaml
+---
+displayName: IBM Cloud Databases for Mongo (v5)
+type: external
+config:
+  hosts:
+    - host: your-mongo-host-1.databases.appdomain.cloud
+      port: 30419
+    - host: your-mongo-host-2.databases.appdomain.cloud
+      port: 30419
+    - host: your-mongo-host-3.databases.appdomain.cloud
+      port: 30419
+  configDb: admin
+  authMechanism: DEFAULT
+  credentials:
+    secretName: mongodb-admin
+certificates:
+  - alias: ca
+    crt: |
+      -----BEGIN CERTIFICATE-----
+      MIIDDzCCAfegAwIBAgIJANEH58y2/kzHMA0GCSqGSIb3DQEBCwUAMB4xHDAaBgNV
+      BAMME0lCTSBDbG91ZCBEYXRhYmFzZXMwHhcNMTgwNjI1MTQyOTAwWhcNMjgwNjIy
+      MTQyOTAwWjAeMRwwGgYDVQQDDBNJQk0gQ2xvdWQgRGF0YWJhc2VzMIIBIjANBgkq
+      hkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA8lpaQGzcFdGqeMlmqjffMPpIQhqpd8qJ
+      Pr3bIkrXJbTcJJ9uIckSUcCjw4Z/rSg8nnT13SCcOl+1to+7kdMiU8qOWKiceYZ5
+      y+yZYfCkGaiZVfazQBm45zBtFWv+AB/8hfCTdNF7VY4spaA3oBE2aS7OANNSRZSK
+      pwy24IUgUcILJW+mcvW80Vx+GXRfD9Ytt6PRJgBhYuUBpgzvngmCMGBn+l2KNiSf
+      weovYDCD6Vngl2+6W9QFAFtWXWgF3iDQD5nl/n4mripMSX6UG/n6657u7TDdgkvA
+      1eKI2FLzYKpoKBe5rcnrM7nHgNc/nCdEs5JecHb1dHv1QfPm6pzIxwIDAQABo1Aw
+      TjAdBgNVHQ4EFgQUK3+XZo1wyKs+DEoYXbHruwSpXjgwHwYDVR0jBBgwFoAUK3+X
+      Zo1wyKs+DEoYXbHruwSpXjgwDAYDVR0TBAUwAwEB/zANBgkqhkiG9w0BAQsFAAOC
+      AQEAJf5dvlzUpqaix26qJEuqFG0IP57QQI5TCRJ6Xt/supRHo63eDvKw8zR7tlWQ
+      lV5P0N2xwuSl9ZqAJt7/k/3ZeB+nYwPoyO3KvKvATunRvlPBn4FWVXeaPsG+7fhS
+      qsejmkyonYw77HRzGOzJH4Zg8UN6mfpbaWSsyaExvqknCp9SoTQP3D67AzWqb1zY
+      doqqgGIZ2nxCkp5/FXxF/TMb55vteTQwfgBy60jVVkbF7eVOWCv0KaNHPF5hrqbN
+      i+3XjJ7/peF3xMvTMoy35DcT3E2ZeSVjouZs15O90kI3k2daS2OHJABW0vSj4nLz
+      +PQzp/B9cQmOO8dCe049Q3oaUA==
+      -----END CERTIFICATE-----
+```
+
+**Note:** Replace the `host`, `port`, and `certificates` values with your actual MongoDB connection details. The secretName set in the credentials will be used to create the secret by the gitops helm charts.
+
+#### Step 2: Set MongoDB Credentials
+
+Export your MongoDB username and password as environment variables:
+
+```bash
+export MONGO_USERNAME="your-mongodb-username"
+export MONGO_PASSWORD="your-mongodb-password"
+```
+
+#### Step 3: Register MongoDB Configuration
+
+Run the `mas gitops-mongo` command with the YAML provider:
+
+```bash
+mas gitops-mongo \
+  --mongo-provider "yaml" \
+  --yaml-file "mongo-config.yaml" \
+  --mongo-username "${MONGO_USERNAME}" \
+  --mongo-password "${MONGO_PASSWORD}"
+```
+
+This will register your MongoDB connection details in AWS Secrets Manager for use by MAS and the Suite License Service.
 
 ## Configure License File for Maximo Application Suite Core Platform
 
@@ -363,12 +441,14 @@ The `mas gitops-suite` function will perform the following actions:
 OCP_DOMAIN="$(echo ${ROSA_CLUSTER_API_URL} | awk -F[/:] '{print $4}' | sed 's/^api\.//')"
 MAS_DOMAIN="${MAS_INSTANCE_ID}.apps.${OCP_DOMAIN}"
 
+# Set the mongo-provider based on which option you used in the "Setup Mongo" section:
+# - Use "aws" if you provisioned AWS DocumentDB (Option 1)
+# - Use "yaml" if you configured an external MongoDB instance (Option 2)
 mas gitops-suite \
   --github-push \
   --mongo-provider aws \
-  --user-action "add" \
   --sls-channel 3.x \
-  --mas-channel 8.11.x \
+  --mas-channel 9.1.x \
   --mas-domain "${MAS_DOMAIN}"
 ```
 
@@ -408,7 +488,7 @@ The **MAS Core Platform** requires configuration for DRO, SLS, and Mongo (Docume
 
 ### Suite System Mongo Configuration
 
-The `mas gitops-config` command below will provide MAS with the details needed to communicate with the DocumentDB instance that we setup earlier. It will read `<account>/<cluster>/<instance>/mongo` secret set in the previous step and use it to generate a new configuration file and push it to your **Config Repository** as `/<account>/<cluster>/<instance>/ibm-mas-suite-configs.yaml`. This YAML file is used to define all types of suite configuration. After running the command below, the will only contain the configuration for Mongo. We are going to add other types of configuration in later steps.
+The `mas gitops-mas-config` command below will provide MAS with the details needed to communicate with the DocumentDB instance that we setup earlier. It will read `<account>/<cluster>/<instance>/mongo` secret set in the previous step and use it to generate a new configuration file and push it to your **Config Repository** as `/<account>/<cluster>/<instance>/ibm-mas-suite-configs.yaml`. This YAML file is used to define all types of suite configuration. After running the command below, the will only contain the configuration for Mongo. We are going to add other types of configuration in later steps.
 
 ```bash
 mas gitops-mas-config \
@@ -428,7 +508,7 @@ It will take a few minutes to become `Healthy`.
 
 ### Suite System SLS Configuration
 
-The `mas gitops-config` command below will provide MAS with the details needed to communicate with the **IBM Suite License Service** application that we setup earlier. will add SLS configuration to the existing `/<account>/<cluster>/<instance>/ibm-mas-suite-configs.yaml` file and push the updated file to your **Config Repository**.
+The `mas gitops-mas-config` command below will provide MAS with the details needed to communicate with the **IBM Suite License Service** application that we setup earlier. will add SLS configuration to the existing `/<account>/<cluster>/<instance>/ibm-mas-suite-configs.yaml` file and push the updated file to your **Config Repository**.
 
 ```bash
 mas gitops-mas-config \
@@ -448,7 +528,7 @@ It will take a few minutes to become `Healthy`.
 
 ### Suite System DRO Configuration
 
-The `mas gitops-config` command below will provide MAS with the details needed to communicate with the **IBM Data Reporter Operator** that we installed on the cluster. It will add DRO configuration to the existing `/<account>/<cluster>/<instance>/ibm-mas-suite-configs.yaml` file and push the updated file to your **Config Repository**.
+The `mas gitops-mas-config` command below will provide MAS with the details needed to communicate with the **IBM Data Reporter Operator** that we installed on the cluster. It will add DRO configuration to the existing `/<account>/<cluster>/<instance>/ibm-mas-suite-configs.yaml` file and push the updated file to your **Config Repository**.
 
 ```bash
 
@@ -483,6 +563,9 @@ This completes the minimal configuration required by MAS Core; after a few minut
 
 ![instance root app after Suite healthy](docs/screenshots/15-instance-root-suitehealthy.png)
 
+> [!NOTE]
+> Additional MAS configuration types are supported if further configuration is needed. Run `mas gitops-mas-config --help` to see all available configuration types: `appcfg`, `bas`, `jdbc`, `kafka`, `ldap-default`, `mongo`, `objectstorage`, `sls`, and `smtp`.
+
 
 ## Configure Maximo Application Suite Core Workspace
 
@@ -503,7 +586,7 @@ You will see the **MAS Core Platform Workspace** (`<workspace>-suite.<cluster>.<
 
 ![instance root app after workspace](docs/screenshots/16-instance-root-workspace.png)
 
-It will take a few minutes to become `Healthy`. At this point, the MAS Core Platform is up and running and you should be able to sign into the MAS user interface using the superuser credentials. The remaining steps in this demonstration cover installing the Manage application and its dependencies using Gitops.  
+It will take a few minutes to become `Healthy`. At this point, the MAS Core Platform is up and running and you should be able to sign into the MAS user interface using the superuser credentials. The remaining steps in this demonstration cover installing the Manage, Facilities, and Visual Inspection applications and their dependencies using Gitops.
 
 ## Configure a DB2 Database for the Manage Application
 
@@ -533,9 +616,7 @@ export FILE_STORAGE_CLASS="efs${MAS_INSTANCE_ID}"
 
 mas gitops-db2u-database \
   --github-push \
-  --db2-version "s11.5.9.0-cn1" \
-  --db2-4k-device-support "" \
-  --db2-workload "" \
+  --db2-version "s11.5.9.0-cn2" \
   --db2-data-storage-class "${BLOCK_STORAGE_CLASS}" \
   --db2-logs-storage-class "${BLOCK_STORAGE_CLASS}" \
   --db2-audit-logs-storage-class "${BLOCK_STORAGE_CLASS}" \
@@ -567,7 +648,7 @@ It will take around 20 minutes for the **DB2 Database** application to become `H
 
 ## JDBC Configuration for Manage
 
-The Manage Application depends on a JDBC Database. We will provide it with the details of the DB2 database that we setup in the previous step. The configuration is provided using the `gitops-mas-config` command we used for Mongo, SLS and BAS earlier. 
+The Manage Application depends on a JDBC Database. We will provide it with the details of the DB2 database that we setup in the previous step. The configuration is provided using the `gitops-mas-config` command we used for Mongo, SLS and BAS earlier.
 
 This time, however, we will be setting the configuration at the "Workspace-Application" (`wsapp`) scope, since this configuration is intended to be used by (and only by) the Manage Application and the workspace we are going to configure for it later.
 
@@ -605,7 +686,7 @@ The `mas gitops-suite-app-install` command will generate the `/<account>/<cluste
 mas gitops-suite-app-install \
   --github-push  \
   --mas-app-id  "manage" \
-  --mas-app-channel  "8.7.x" \
+  --mas-app-channel  "9.1.x" \
   --mas-app-catalog-source "ibm-operator-catalog" \
   --mas-app-api-version "apps.mas.ibm.com/v1" \
   --mas-app-kind "ManageApp" \
@@ -665,6 +746,129 @@ You will see the **Manage Workspace** (`<workspace>.manage.<cluster>.<instance>`
 ![ArgoCD after Manage activated](docs/screenshots/25-instance-root-manage-activated.png)
 
 It will take about 2 hours for the **Manage Workspace** application to progress to `Healthy`.
+
+## Configure a DB2 Database for the Facilities Application
+
+Similar to Manage, the Facilities application requires its own DB2 database. We'll use the same storage classes configured earlier.
+
+```bash
+mas gitops-db2u-database \
+  --github-push \
+  --db2-version "s11.5.9.0-cn2" \
+  --db2-data-storage-class "${BLOCK_STORAGE_CLASS}" \
+  --db2-logs-storage-class "${BLOCK_STORAGE_CLASS}" \
+  --db2-audit-logs-storage-class "${BLOCK_STORAGE_CLASS}" \
+  --db2-temp-storage-class "${BLOCK_STORAGE_CLASS}" \
+  --db2-meta-storage-class "${FILE_STORAGE_CLASS}" \
+  --db2-backup-storage-class "${FILE_STORAGE_CLASS}" \
+  --db2-database-db-config-yaml "/demo-files/db2/db2_database_db_config_facilities.yaml" \
+  --db2-instance-dbm-config-yaml "/demo-files/db2/db2_instance_dbm_config_facilities.yaml" \
+  --db2-instance-registry-yaml "/demo-files/db2/db2_instance_registry_facilities.yaml" \
+  --mas-app-id "facilities"
+```
+
+You will see the **DB2 Database** (`db2-db.<cluster>.<instance>.facilities`) application appear as a child of the **Instance Root** application. It will take around 20 minutes for this application to become `Healthy`.
+
+## JDBC Configuration for Facilities
+
+Now we'll configure the JDBC connection for Facilities to use the DB2 database we just created:
+
+```bash
+mas gitops-mas-config \
+  --github-push \
+  --mas-config-type jdbc \
+  --config-action upsert \
+  --mas-config-scope wsapp \
+  --mas-app-id "facilities" \
+  --mas-workspace-id "${MAS_WORKSPACE_ID}" \
+  --jdbc-type "incluster-db2" \
+  --jdbc-instance-name "db2wh-${MAS_INSTANCE_ID}-facilities"
+```
+
+You will see the **Workspace-App JDBC Configuration for Facilities** application appear as a child of the **Instance Root** application.
+
+## Install Facilities
+
+Now we can install the Facilities application:
+
+```bash
+mas gitops-suite-app-install \
+  --github-push  \
+  --mas-app-id  "facilities" \
+  --mas-app-channel  "9.1.x" \
+  --mas-app-catalog-source "ibm-operator-catalog" \
+  --mas-app-api-version "apps.mas.ibm.com/v1" \
+  --mas-app-kind "FacilitiesApp"
+```
+
+You will see the **Facilities Install** (`facilities.<cluster>.<instance>`) application appear as a child of the **Instance Root** application. It will take around 10 minutes for this application to become `Healthy`.
+
+## Activate Facilities
+
+Before activating Facilities, we need to generate the workspace spec configuration:
+
+```bash
+# Run a script to generate YAML containing the spec for the Facilities workspace
+# The exported value of the DEFAULT_FILE_STORAGE_CLASS env var will be substituted in where appropriate
+FACILITIES_APPWS_FILE="/mascli/facilities-appws-spec.yaml"
+bash /demo-files/facilities/generate-appws-spec.sh ${FACILITIES_APPWS_FILE}
+```
+
+Now activate Facilities and create its workspace configuration:
+
+```bash
+mas gitops-suite-app-config \
+  --github-push \
+  --mas-app-id  "facilities" \
+  --mas-app-kind "FacilitiesApp" \
+  --mas-appws-api-version "apps.mas.ibm.com/v1" \
+  --mas-appws-kind "FacilitiesWorkspace" \
+  --mas-appws-spec-yaml "${FACILITIES_APPWS_FILE}"
+```
+
+You will see the **Facilities Workspace** (`<workspace>.facilities.<cluster>.<instance>`) application appear as a child of the **Instance Root** application.
+
+## Install Visual Inspection
+
+Visual Inspection does not require a database, but it does require GPU resources. Before installing the application, we need to generate the application spec configuration:
+
+```bash
+# Run a script to generate YAML containing the spec for the Visual Inspection app
+# The exported value of the DEFAULT_FILE_STORAGE_CLASS env var will be substituted in where appropriate
+VISUALINSPECTION_APP_SPEC_FILE="/mascli/visualinspection-app-spec.yaml"
+bash /demo-files/visualinspection/generate-app-spec.sh ${VISUALINSPECTION_APP_SPEC_FILE}
+```
+
+Now install the application:
+
+```bash
+mas gitops-suite-app-install \
+  --github-push  \
+  --mas-app-id  "visualinspection" \
+  --mas-app-channel  "9.1.x" \
+  --mas-app-catalog-source "ibm-operator-catalog" \
+  --mas-app-api-version "apps.mas.ibm.com/v1" \
+  --mas-app-kind "VisualInspectionApp" \
+  --gpu-request-quota "2" \
+  --mas-app-spec-yaml "${VISUALINSPECTION_APP_SPEC_FILE}"
+```
+
+You will see the **Visual Inspection Install** (`visualinspection.<cluster>.<instance>`) application appear as a child of the **Instance Root** application.
+
+## Activate Visual Inspection
+
+Now activate Visual Inspection and create its workspace configuration:
+
+```bash
+mas gitops-suite-app-config \
+  --github-push \
+  --mas-app-id  "visualinspection" \
+  --mas-app-kind "VisualInspectionApp" \
+  --mas-appws-api-version "apps.mas.ibm.com/v1" \
+  --mas-appws-kind "VisualInspectionAppWorkspace"
+```
+
+You will see the **Visual Inspection Workspace** (`<workspace>.visualinspection.<cluster>.<instance>`) application appear as a child of the **Instance Root** application.
 
 ## Accessing MAS
 
@@ -738,6 +942,6 @@ Hit the **Launch** button on the Manage tile and you will be taken to the Manage
 
 - If you modify any values in secrets manager, you must hard-refresh and resync any ArgoCD applications that reference them in order for the updates to be picked up by ArgoCD
 
-- Some of the gitops commands create a "lock" branch in git to ensure concurrent updates are handled without issue. Although measures are taken to ensure this branch is deleted when the script exits - even in the event of an early exit due to an error, it is not always guaranteed to work. If the lock branch is left around, it may cause subsequent calls to the command to wait indefinitely (and timeout). If this happens, you must manually delete the branch (it will be named something like `lock.gitops***`) from your **Config Repository**
+- Some of the gitops commands create a "lock" branch in git to ensure concurrent updates are handled without issue. Although measures are taken to ensure this branch is deleted when the script exits - even in the event of an early exit due to an error, it is not always guaranteed to work. If the lock branch is left around, it may cause subsequent calls to the command to wait indefinitely (and timeout). If this happens, you must manually delete the branch (it will be named something like `lock.gitops***`) from your **Config Repository**. For more details about the locking mechanism, see the [Locking Mechanisms](https://ibm-mas.github.io/gitops/configuration/locking-mechanisms/) documentation in the GitOps repository.
 
 - The gitops commands clone the **Config Repository** locally on startup and delete it on exit. If the script exits early it may block subsequent commands from working. If you see an error like `fatal: destination path 'xxxxxx' already exists and is not an empty directory.` you must manually delete the local repo clone from the filesystem.
