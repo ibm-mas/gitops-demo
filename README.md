@@ -223,8 +223,7 @@ mas gitops-cluster \
   --icr-username "${ICR_USERNAME}" \
   --icr-password "${ICR_PASSWORD}" \
   --catalog-version v9-260129-amd64 \
-  --catalog-image icr.io/cpopen/ibm-maximo-operator-catalog \
-  --catalog-action install
+  --catalog-image icr.io/cpopen/ibm-maximo-operator-catalog
 ```
 
 It will take a few minutes for the **Cluster Root Application Set** to see the new configuration files in your **Config Repository**. Once this happens, you will see a new **Cluster Root** (`cluster.<cluster>`) application appear as a child of the **Cluster Root Application Set**. It should begin syncing automatically, it will be in the `Progressing` state for a short while as indicated by the blue circle symbol indicated by the arrow in the screenshot below:
@@ -439,7 +438,7 @@ The `mas gitops-suite` function will perform the following actions:
 ```bash
 # NOTE: this depends on the ROSA_CLUSTER_API_URL variable set earlier in this demonstration to work
 OCP_DOMAIN="$(echo ${ROSA_CLUSTER_API_URL} | awk -F[/:] '{print $4}' | sed 's/^api\.//')"
-MAS_DOMAIN="${MAS_INSTANCE_ID}.apps.${OCP_DOMAIN}"
+MAS_DOMAIN="${MAS_INSTANCE_ID}.apps.rosa.${OCP_DOMAIN}"
 
 # Set the mongo-provider based on which option you used in the "Setup Mongo" section:
 # - Use "aws" if you provisioned AWS DocumentDB (Option 1)

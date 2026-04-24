@@ -10,8 +10,7 @@ echo "OUTPUT_FILE ....................... ${OUTPUT_FILE}"
 echo "DEFAULT_FILE_STORAGE_CLASS  ....... ${DEFAULT_FILE_STORAGE_CLASS}"
 echo "MAS_WORKSPACE_ID .................. ${MAS_WORKSPACE_ID}"
 
-echo '
-mas_appws_spec:
+echo 'mas_appws_spec:
   bindings:
     jdbc: workspace-application
   components:

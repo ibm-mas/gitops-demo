@@ -130,8 +130,7 @@ SB4_B64=$(echo -n '<?xml version="1.0" encoding="UTF-8"?>
 </server>
 ' | base64 -w0)
 
-echo '
-mas_app_server_bundles_combined_add_server_config:
+echo 'mas_app_server_bundles_combined_add_server_config:
   '${MAS_WORKSPACE_ID}'-manage-d--sb0--asc--sn: '${SB0_B64}'
   '${MAS_WORKSPACE_ID}'-manage-d--sb1--asc--sn: '${SB1_B64}'
   '${MAS_WORKSPACE_ID}'-manage-d--sb2--asc--sn: '${SB2_B64}'

@@ -8,8 +8,7 @@ OUTPUT_FILE=$1
 echo "OUTPUT_FILE ....................... ${OUTPUT_FILE}"
 echo "DEFAULT_FILE_STORAGE_CLASS  ....... ${DEFAULT_FILE_STORAGE_CLASS}"
 
-echo '
-mas_appws_spec:
+echo 'mas_appws_spec:
   bindings:
     jdbc: workspace-application
   settings:
