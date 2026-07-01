@@ -163,10 +163,12 @@ The `mas gitops-bootstrap` function will perform the following actions:
 - Create an ArgoCD project for Maximo Application Suite
 - Create the Maximo Application Suite **Account Root Application**
 
+> Note: the `app-revision` here is the version of release of [gitops](https://github.com/ibm-mas/gitops/releases) you wish to use.
+
 ```bash
 mas gitops-bootstrap \
   --account-id "${ACCOUNT_ID}" \
-  --app-revision "7.5.0" \
+  --app-revision "8.3.0" \
   --sm-aws-secret-region "${SM_AWS_REGION}" \
   --sm-aws-secret-key "${SM_AWS_SECRET_ACCESS_KEY}" \
   --sm-aws-access-key "${SM_AWS_ACCESS_KEY_ID}" \
