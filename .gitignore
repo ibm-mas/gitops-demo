@@ -2,3 +2,5 @@
 workingdir/
 files/manage/manage-server-bundles.yaml
 files/manage/manage-appws-spec.yaml
+files/entitlement.lic
+files/gitops-*.sh
