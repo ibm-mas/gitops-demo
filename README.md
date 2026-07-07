@@ -12,12 +12,12 @@ Please note:
 
 The process boils down to the following steps:
   - Provision a ROSA cluster
-  - Configure AWS Secrets Manager
+  - Configure a secrets backend (AWS Secrets Manager or Kubernetes Secrets — see below)
   - Create a Git repository to hold your configuration files
   - Install and configure ArgoCD
   - Create the  **Account Root Application**
   - Provision DocumentDB
-  - Create secrets in Secrets Manager and push config files to your Config Git repository
+  - Create secrets in the secrets backend and push config files to your Config Git repository
 
 The final step is achieved here using various `gitops` functions provided by the MAS CLI. These have been structured primarily to suit IBM Internal processes. We would like to provide a more streamlined and generic CLI/utility to achieve this in future iterations.
 
@@ -87,17 +87,33 @@ export AWS_SECRET_ACCESS_KEY="xxx"
 export AWS_REGION="us-east-1"
 export ROSA_TOKEN=xxx
 
-# These will be used to configure the AVP plugin in ArgoCD so it is capable of retrieving secrets from AWS Secrets Manager
-# They will also be used to configure various secrets automatically by some of the CLI functions we are about to call
-# These can be the same as the AWS details above
+# ── Secrets Backend ─────────────────────────────────────────────────────────────
+# The ArgoCD Vault Plugin (AVP) supports two backends for storing secrets.
+# Choose ONE of the options below.
+
+# Option 1: AWS Secrets Manager (default)
+# These will be used to configure the AVP plugin in ArgoCD so it is capable of
+# retrieving secrets from AWS Secrets Manager. They will also be used to configure
+# various secrets automatically by some of the CLI functions we are about to call.
+# These can be the same as the AWS details above.
 export SM_AWS_REGION="${AWS_REGION}"
 export SM_AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY}"
 export SM_AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID}"
 
 # This will be substituted into generated configuration .yaml files to reference secrets
-# and allow them to be resolved by the AVP plugin when rendering Helm Charts
+# and allow them to be resolved by the AVP plugin when rendering Helm Charts.
 SM_AWS_ACCOUNT_ID="xxxxx"
 export SECRETS_PATH="arn:aws:secretsmanager:${SM_AWS_REGION}:${SM_AWS_ACCOUNT_ID}:secret"
+
+# Option 2: Kubernetes Secrets
+# An alternative backend that stores secrets as native Kubernetes Secrets rather than
+# in AWS Secrets Manager. When using this option you do not need SM_AWS_* variables.
+# Set the following before running any `mas gitops-*` commands — if omitted, the CLI
+# defaults to the AWS backend:
+#   export SM_BACKEND="kubernetessecrets"
+#   export SECRETS_PATH="secrets"              # any existing namespace of your choice; "secrets" is just an example
+#   export AVP_TYPE="kubernetessecret"         # tells the AVP plugin which backend to use
+# ────────────────────────────────────────────────────────────────────────────────
 
 ```
 
@@ -155,7 +171,7 @@ git config --global user.email "you@example.com"
 The `mas gitops-bootstrap` function will perform the following actions:
 - Install ArgoCD operator
 - Create ArgoCD instance
-- Configure Secret Manager backend for ArgoCD
+- Configure secrets backend for ArgoCD
 - Configure ArgoCD ServiceAccount and RBAC
 - Enable the ArgoCD Vault plugin
 - Configure ArgoCD authentication to your **Config Repository** using ${GITHUB_PAT}
@@ -164,6 +180,8 @@ The `mas gitops-bootstrap` function will perform the following actions:
 - Create the Maximo Application Suite **Account Root Application**
 
 > Note: the `app-revision` here is the version of release of [gitops](https://github.com/ibm-mas/gitops/releases) you wish to use.
+
+### Option 1: Bootstrap with AWS Secrets Manager
 
 ```bash
 mas gitops-bootstrap \
@@ -176,6 +194,31 @@ mas gitops-bootstrap \
   --github-revision "${GIT_BRANCH}" \
   --github-pat "${GITHUB_PAT}"
 ```
+
+### Option 2: Bootstrap with Kubernetes Secrets
+
+If you prefer not to use AWS Secrets Manager, you can configure the AVP plugin to store and retrieve secrets as native Kubernetes Secrets instead. Pass `--sm-backend kubernetessecrets` together with `--sm-secrets-path` (the namespace where secrets will be created). The `--sm-aws-*` flags are not required with this backend.
+
+```bash
+mas gitops-bootstrap \
+  --account-id "${ACCOUNT_ID}" \
+  --app-revision "8.3.0" \
+  --sm-backend "kubernetessecrets" \
+  --sm-secrets-path "secrets" \
+  --github-url "https://${GITHUB_HOST}/${GITHUB_ORG}/${GITHUB_REPO}" \
+  --github-revision "${GIT_BRANCH}" \
+  --github-pat "${GITHUB_PAT}"
+```
+
+You must also export the following environment variables **before running any subsequent `mas gitops-*` commands** so that the CLI and the AVP plugin both know to use the Kubernetes Secrets backend. If these are omitted, the CLI defaults to AWS Secrets Manager:
+
+```bash
+export SECRETS_PATH="secrets"   # any existing namespace of your choice; "secrets" is just an example
+export AVP_TYPE="kubernetessecret"
+```
+
+> [!NOTE]
+> With the Kubernetes Secrets backend, secrets are managed as Kubernetes `Secret` resources in the `secrets` namespace. Ensure the ArgoCD service account has permission to read secrets in that namespace. The inline-path placeholders used in configuration files will continue to work — the AVP plugin resolves them against Kubernetes Secrets rather than AWS Secrets Manager.
 
 Once complete, you should see a message in your terminal like:
 ```
